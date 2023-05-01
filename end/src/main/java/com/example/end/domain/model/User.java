@@ -18,7 +18,11 @@ public class User implements UserDetails {
     @Id
     private String id;
 
-    private String displayName;
+    private String username;
+
+    private String email;
+
+    private boolean enabled;
 
     private String identifier;
 
