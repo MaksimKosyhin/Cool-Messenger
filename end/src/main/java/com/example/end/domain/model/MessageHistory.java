@@ -2,7 +2,6 @@ package com.example.end.domain.model;
 
 import com.mongodb.DBRef;
 import lombok.Data;
-import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;

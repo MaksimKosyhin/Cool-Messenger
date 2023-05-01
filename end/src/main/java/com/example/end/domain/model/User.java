@@ -1,9 +1,6 @@
 package com.example.end.domain.model;
 
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
-import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.security.core.GrantedAuthority;
@@ -12,6 +9,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 @Document(collection = "users")
 @Data
@@ -20,7 +18,9 @@ public class User implements UserDetails {
     @Id
     private String id;
 
-    private String username;
+    private String displayName;
+
+    private String identifier;
 
     private String password;
 
@@ -28,11 +28,9 @@ public class User implements UserDetails {
 
     private String info;
 
-    private String identifier;
+    private Set<Remainder> remainders;
 
-    private List<Remainder> remainders;
-
-    private List<Folder> folders;
+    private Set<Folder> folders;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

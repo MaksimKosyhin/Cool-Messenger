@@ -12,11 +12,11 @@ public class PublicChat {
 
     private String title;
 
+    private String identifier;
+
     private String info;
 
     private String imageUrl;
-
-    private String identifier;
 
     private Type type;
 

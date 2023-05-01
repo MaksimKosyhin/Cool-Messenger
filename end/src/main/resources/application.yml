@@ -1,0 +1,15 @@
+spring:
+  profiles:
+    active:
+      - dev
+springdoc:
+  api-docs:
+    enabled: true
+    path: /rest-api-docs
+  swagger-ui:
+    path: /swagger-ui
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
