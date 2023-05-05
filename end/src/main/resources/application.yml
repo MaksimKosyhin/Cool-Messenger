@@ -8,6 +8,11 @@ springdoc:
     path: /rest-api-docs
   swagger-ui:
     path: /swagger-ui
+jwt:
+  private:
+    key: classpath:rsa.private.key
+  public:
+    key: classpath:rsa.public.key
 ---
 spring:
   config:

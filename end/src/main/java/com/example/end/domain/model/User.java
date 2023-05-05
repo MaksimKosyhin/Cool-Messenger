@@ -6,10 +6,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Document(collection = "users")
 @Data
@@ -34,7 +31,7 @@ public class User implements UserDetails {
 
     private Set<Remainder> remainders;
 
-    private Set<Folder> folders;
+    private Map<String, List<String>> folders;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -48,7 +45,7 @@ public class User implements UserDetails {
 
     @Override
     public String getUsername() {
-        return id.toString();
+        return email;
     }
 
     @Override
@@ -68,7 +65,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return enabled;
     }
 
     @Data
@@ -76,11 +73,5 @@ public class User implements UserDetails {
         private String id;
         private Date notifyAt;
         private String message;
-    }
-
-    @Data
-    public static class Folder {
-        private String name;
-        private List<String> members;
     }
 }
