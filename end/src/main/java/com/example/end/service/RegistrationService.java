@@ -1,5 +1,8 @@
 package com.example.end.service;
 
+import com.example.end.domain.dto.CreateUserRequest;
+import com.example.end.domain.dto.LoggedInUser;
+import com.example.end.domain.mapper.UserEditMapper;
 import com.example.end.exception.ApiException;
 import com.example.end.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +23,15 @@ public class RegistrationService {
     private final JavaMailSender mailSender;
     private final JwtEncoder encoder;
     private final JwtDecoder decoder;
+    private final UserEditMapper userEditMapper;
 
-    public void sendEmailConfirmation(String emailTo) {
+    public void register(CreateUserRequest request) {
+        var user = userEditMapper.create(request);
+        userRepository.save(user);
+        sendEmailConfirmation(user.getEmail());
+    }
+
+    private void sendEmailConfirmation(String emailTo) {
         var token = getConfirmationToken(emailTo);
 
         var subject = "Registration Confirmation";
