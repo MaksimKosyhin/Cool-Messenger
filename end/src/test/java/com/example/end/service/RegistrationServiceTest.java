@@ -55,7 +55,7 @@ public class RegistrationServiceTest {
         Jwt jwt = new Jwt(token, now, expiry, Map.of("alg", "HS256"), claims.getClaims());
 
         when(decoder.decode(token)).thenReturn(jwt);
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(new User()));
+        when(userRepository.findByUsername(email)).thenReturn(Optional.of(new User()));
         User expectedUser = new User();
         expectedUser.setEnabled(true);
 

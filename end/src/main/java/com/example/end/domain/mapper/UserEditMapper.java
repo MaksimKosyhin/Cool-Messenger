@@ -4,7 +4,6 @@ import com.example.end.domain.dto.CreateUserRequest;
 import com.example.end.domain.model.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.Named;
 
 import java.util.Collections;
 import java.util.List;
@@ -18,4 +17,5 @@ public abstract class UserEditMapper {
     public Map<String, List<String>> defaultFolder(){
         return Map.of("all", Collections.emptyList());
     }
+
 }

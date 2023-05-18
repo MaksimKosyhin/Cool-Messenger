@@ -2,6 +2,7 @@ package com.example.end.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -29,4 +30,10 @@ public class DefaultExceptionHandler {
                 .body(errors);
     }
 
+    @ExceptionHandler
+    protected ResponseEntity<?> handleAuthenticationException(AuthenticationException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("auth", "Wrong username or password"));
+    }
 }

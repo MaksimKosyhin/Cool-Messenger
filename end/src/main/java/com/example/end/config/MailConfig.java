@@ -37,46 +37,54 @@ public class MailConfig {
     @Bean
     @Profile("test")
     public JavaMailSender MockMailSender() {
-        return new JavaMailSender() {
-            @Override
-            public MimeMessage createMimeMessage() {
-                return null;
-            }
+        return new MockMailSender();
+    }
 
-            @Override
-            public MimeMessage createMimeMessage(InputStream contentStream) throws MailException {
-                return null;
-            }
+    public static class MockMailSender implements JavaMailSender{
+        private String token;
+        @Override
+        public MimeMessage createMimeMessage() {
+            return null;
+        }
 
-            @Override
-            public void send(MimeMessage mimeMessage) throws MailException {
+        @Override
+        public MimeMessage createMimeMessage(InputStream contentStream) throws MailException {
+            return null;
+        }
 
-            }
+        @Override
+        public void send(MimeMessage mimeMessage) throws MailException {
 
-            @Override
-            public void send(MimeMessage... mimeMessages) throws MailException {
+        }
 
-            }
+        @Override
+        public void send(MimeMessage... mimeMessages) throws MailException {
 
-            @Override
-            public void send(MimeMessagePreparator mimeMessagePreparator) throws MailException {
+        }
 
-            }
+        @Override
+        public void send(MimeMessagePreparator mimeMessagePreparator) throws MailException {
 
-            @Override
-            public void send(MimeMessagePreparator... mimeMessagePreparators) throws MailException {
+        }
 
-            }
+        @Override
+        public void send(MimeMessagePreparator... mimeMessagePreparators) throws MailException {
 
-            @Override
-            public void send(SimpleMailMessage simpleMessage) throws MailException {
+        }
 
-            }
+        @Override
+        public void send(SimpleMailMessage simpleMessage) throws MailException {
+            var text = simpleMessage.getText();
+            this.token = text.substring(text.indexOf("token=")).substring(6);
+        }
 
-            @Override
-            public void send(SimpleMailMessage... simpleMessages) throws MailException {
+        public String getToken() {
+            return this.token;
+        }
 
-            }
-        };
+        @Override
+        public void send(SimpleMailMessage... simpleMessages) throws MailException {
+
+        }
     }
 }

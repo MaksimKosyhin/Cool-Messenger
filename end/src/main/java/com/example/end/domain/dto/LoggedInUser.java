@@ -7,12 +7,11 @@ import java.util.Map;
 import java.util.Set;
 
 public record LoggedInUser(
-        String name,
-        String qualifier,
+        String displayName,
+        String username,
         String info,
         String imageUrl,
         Set<User.Remainder> remainders,
-        Map<String, List<String>> folders,
-        String token
+        Map<String, List<String>> folders
 ) {
 }

@@ -15,13 +15,13 @@ public class User implements UserDetails {
     @Id
     private String id;
 
-    private String name;
+    private String displayName;
+
+    private String username;
 
     private String email;
 
     private boolean enabled;
-
-    private String identifier;
 
     private String password;
 
@@ -40,12 +40,12 @@ public class User implements UserDetails {
 
     @Override
     public String getPassword() {
-        return null;
+        return password;
     }
 
     @Override
     public String getUsername() {
-        return email;
+        return username;
     }
 
     @Override

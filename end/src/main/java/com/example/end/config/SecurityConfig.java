@@ -5,14 +5,11 @@ import com.example.end.repository.UserRepository;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -20,8 +17,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,21 +24,18 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
 import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
-import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
-import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Map;
+
+import static java.lang.String.format;
 
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -55,6 +47,12 @@ public class SecurityConfig {
 
   @Value("${jwt.private.key}")
   private RSAPrivateKey rsaPrivateKey;
+
+  @Value("${springdoc.api-docs.path}")
+  private String restApiDocPath;
+
+  @Value("${springdoc.swagger-ui.path}")
+  private String swaggerPath;
 
   @Bean
   public AuthenticationManager authenticationManager(
@@ -72,7 +70,7 @@ public class SecurityConfig {
   @Bean
   public UserDetailsService userDetailsService(UserRepository userRepository) {
     return username -> {
-      var user = userRepository.findByEmail(username)
+      var user = userRepository.findByUsername(username)
               .orElseThrow(() -> new ApiException(
                       HttpStatus.UNAUTHORIZED, Map.of("auth", "wrong email or password")));
 
@@ -99,7 +97,11 @@ public class SecurityConfig {
                 .accessDeniedHandler(new BearerTokenAccessDeniedHandler()));
 
     http.authorizeHttpRequests()
-            .anyRequest().permitAll()
+            .requestMatchers(
+                    "/",
+                    format("%s/**", restApiDocPath),
+                    format("%s/**", swaggerPath))
+            .permitAll()
             .and()
             .httpBasic(Customizer.withDefaults())
             .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);

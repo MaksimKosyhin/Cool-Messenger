@@ -10,7 +10,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 @Controller
-@RequestMapping("api/v1/register")
+@RequestMapping("api/v1/users")
 @RequiredArgsConstructor
 public class RegistrationController {
 
@@ -22,7 +22,7 @@ public class RegistrationController {
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
-    @PutMapping
+    @PutMapping("confirm")
     public ResponseEntity<?> confirmRegistration(@RequestParam String token) {
         registrationService.confirmRegistration(token);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();

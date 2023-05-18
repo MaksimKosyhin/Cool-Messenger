@@ -27,9 +27,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-public class RegistrationTest {
+public class RegistrationControllerTest {
 
-    private static final String REGISTRATION_PATH = "/api/v1/register";
+    private static final String REGISTRATION_PATH = "/api/v1/users";
 
     private final MockMvc mockMvc;
 
@@ -40,7 +40,7 @@ public class RegistrationTest {
     private final UserRepository userRepository;
 
     @Autowired
-    public RegistrationTest(MockMvc mockMvc, ObjectMapper objectMapper, JwtEncoder encoder, UserRepository userRepository) {
+    public RegistrationControllerTest(MockMvc mockMvc, ObjectMapper objectMapper, JwtEncoder encoder, UserRepository userRepository) {
         this.mockMvc = mockMvc;
         this.objectMapper = objectMapper;
         this.encoder = encoder;
@@ -59,9 +59,9 @@ public class RegistrationTest {
 
         String username = fakerName.fullName();
         String email = fakerName.lastName() + "-" + UUID.randomUUID() + "@gmail.com";
-        String password = "password";
+        String password = faker.internet().password(5, 255);
 
-        CreateUserRequest request = new CreateUserRequest(username, email, password);
+        CreateUserRequest request = new CreateUserRequest(null, username, email, password);
 
         mockMvc
                 .perform(post(REGISTRATION_PATH)
@@ -77,19 +77,19 @@ public class RegistrationTest {
 
         String username = fakerName.fullName();
         String email = fakerName.lastName() + "-" + UUID.randomUUID() + "@gmail.com";
-        String password = "password";
+        String password = faker.internet().password(5, 255);
 
-        CreateUserRequest request = new CreateUserRequest(username, email, password);
+        CreateUserRequest request = new CreateUserRequest(null, username, email, password);
 
         mockMvc
                 .perform(post(REGISTRATION_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)));
 
-        String token = getValidToken(email);
+        String token = getValidToken(username);
 
         mockMvc
-                .perform(put(REGISTRATION_PATH)
+                .perform(put(REGISTRATION_PATH + "/confirm")
                         .param("token", token))
                 .andExpect(status().isNoContent());
     }
