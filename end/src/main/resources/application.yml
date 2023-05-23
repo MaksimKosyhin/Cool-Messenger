@@ -16,6 +16,8 @@ jwt:
     key: classpath:rsa.private.key
   public:
     key: classpath:rsa.public.key
+cool-messenger:
+  upload-path: uploads
 ---
 spring:
   config:
