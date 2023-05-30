@@ -5,6 +5,9 @@ spring:
   data:
     mongodb:
       uri: mongodb://localhost:27017/cool-chat
+  servlet:
+    multipart.max-file-size: 100MB
+    max-request-size: 100MB
 springdoc:
   api-docs:
     enabled: true
@@ -16,13 +19,20 @@ jwt:
     key: classpath:rsa.private.key
   public:
     key: classpath:rsa.public.key
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
 cool-messenger:
-  upload-path: uploads
+  uploads-folder: uploads
 ---
 spring:
   config:
     activate:
       on-profile: dev
+cool-messenger:
+  uploads-folder: uploads-test
 ---
 spring:
   config:
@@ -31,3 +41,5 @@ spring:
   data:
     mongodb:
       uri: mongodb://localhost:27018/cool-chat
+cool-messenger:
+  uploads-folder: uploads-test

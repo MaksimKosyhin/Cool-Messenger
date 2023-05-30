@@ -102,6 +102,7 @@ public class SecurityConfig {
                     format("%s/**", restApiDocPath),
                     format("%s/**", swaggerPath))
             .permitAll()
+            .anyRequest().permitAll()
             .and()
             .httpBasic(Customizer.withDefaults())
             .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);

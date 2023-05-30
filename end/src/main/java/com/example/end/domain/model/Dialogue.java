@@ -1,5 +1,6 @@
 package com.example.end.domain.model;
 
+import com.mongodb.DBRef;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
@@ -17,15 +18,6 @@ public class Dialogue {
     @Id
     private String id;
 
-    private UserInfo user1;
-
-    private UserInfo user2;
-
-    @Data
-    public static class UserInfo{
-        private String userId;
-        private String username;
-        private String imageUrl;
-        private boolean banned;
-    }
+    private DBRef user1;
+    private DBRef user2;
 }
