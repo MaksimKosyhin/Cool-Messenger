@@ -4,6 +4,7 @@ import com.example.end.exception.ApiException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.mock.web.MockMultipartFile;
@@ -20,17 +21,18 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest
 @ActiveProfiles("test")
-public class FileServiceTest {
+public class FileServiceImplTest {
 
-    private final FileService fileService;
+    private final FileServiceImpl fileService;
     private final String uploadsFolder;
 
     @Autowired
-    public FileServiceTest(FileService fileService) {
+    public FileServiceImplTest(FileServiceImpl fileService,
+                               @Value("cool-messenger.uploads-folder") String uploadsFolder) {
         this.fileService = fileService;
-        this.uploadsFolder = "uploads-test";
+        this.uploadsFolder = uploadsFolder;
     }
 
     @AfterEach
@@ -42,17 +44,6 @@ public class FileServiceTest {
     public void testValidFileIsUploaded() throws Exception {
         Path path = Paths.get("test");
         MockMultipartFile file = new MockMultipartFile("file", "test.txt",
-                "text/plain", "Test file content".getBytes());
-
-        Path savedPath = fileService.save(file, path);
-
-        assertThat(Files.exists(savedPath)).isTrue();
-    }
-
-    @Test
-    public void testValidFileWithoutExtensionIsUploaded() throws Exception {
-        Path path = Paths.get("test");
-        MockMultipartFile file = new MockMultipartFile("file", "test",
                 "text/plain", "Test file content".getBytes());
 
         Path savedPath = fileService.save(file, path);

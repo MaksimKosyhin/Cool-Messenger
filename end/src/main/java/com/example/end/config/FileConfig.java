@@ -42,7 +42,7 @@ public class FileConfig implements WebMvcConfigurer {
     }
 
     private void createNonExistingFolder(String path) {
-        File folder = new File(path);
+        var folder = new File(path);
         boolean folderExist = folder.exists() && folder.isDirectory();
         if(!folderExist) {
             folder.mkdir();

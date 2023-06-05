@@ -23,7 +23,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class RegistrationServiceTest {
+public class RegistrationServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
@@ -38,7 +38,7 @@ public class RegistrationServiceTest {
     private JwtDecoder decoder;
 
     @InjectMocks
-    private RegistrationService registrationService;
+    private RegistrationServiceImpl registrationService;
 
     @Test
     public void confirmRegistration_withValidToken_shouldEnableUser() {

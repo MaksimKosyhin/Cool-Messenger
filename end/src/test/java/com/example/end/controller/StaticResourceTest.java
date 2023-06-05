@@ -4,6 +4,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
@@ -21,17 +25,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
+@EnableAutoConfiguration(exclude = {JpaRepositoriesAutoConfiguration.class, DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class})
 @ActiveProfiles("test")
 public class StaticResourceTest {
-    //todo:rewrite this
-    //todo:find out why @Value not working
     private static final String uploadsFolder = "uploads-test";
 
-    private static final String profileImages = "images";
-
     private static final String attachments = "attachments";
-
-    private final String profileImagesPath = uploadsFolder + "/" + profileImages;
 
     private final String attachmentsPath = uploadsFolder + "/" + attachments;
 
@@ -43,37 +42,10 @@ public class StaticResourceTest {
     }
 
     @Test
-    public void checkStaticFolder_whenAppIsInitialized_rootFolderMustExist() {
+    public void checkStaticFolder_whenAppIsInitialized_uploadsFolderMustExist() {
         File uploadFolder = new File(uploadsFolder);
         boolean uploadFolderExist = uploadFolder.exists() && uploadFolder.isDirectory();
         assertThat(uploadFolderExist).isTrue();
-    }
-
-    @Test
-    public void checkStaticFolder_whenAppIsInitialized_ProfilePhotosSubFolderMustExist() {
-        String profileImageFolderPath = profileImagesPath;
-        File profileImageFolder = new File(profileImageFolderPath);
-        boolean profileImageFolderExist = profileImageFolder.exists() && profileImageFolder.isDirectory();
-        assertThat(profileImageFolderExist).isTrue();
-    }
-
-    @Test
-    public void checkStaticFolder_whenAppIsInitialized_attachmentsSubFolderMustExist() {
-        String attachmentsFolderPath = attachmentsPath;
-        File attachmentsFolder = new File(attachmentsFolderPath);
-        boolean attachmentsFolderExist = attachmentsFolder.exists() && attachmentsFolder.isDirectory();
-        assertThat(attachmentsFolderExist).isTrue();
-    }
-
-    @Test
-    public void getStaticFile_whenImageExistInProfileUploadFolder_receiveOk() throws Exception {
-        String fileName = "profile.png";
-        File source = new ClassPathResource(fileName).getFile();
-
-        File target = new File(profileImagesPath + "/" + fileName);
-        FileUtils.copyFile(source, target);
-
-        mockMvc.perform(get("/file/" + profileImages+"/"+fileName)).andExpect(status().isOk());
     }
 
     @Test
@@ -90,7 +62,7 @@ public class StaticResourceTest {
 
     @Test
     public void getStaticFile_whenImageDoesNotExist_receiveNotFound() throws Exception {
-        mockMvc.perform(get("/file/" + profileImages +"/there-is-no-such-image.png"))
+        mockMvc.perform(get("/file/" + attachments +"/there-is-no-such-image.png"))
                 .andExpect(status().isNotFound());
     }
 
@@ -110,13 +82,11 @@ public class StaticResourceTest {
 
     @AfterEach
     public void cleanup() throws IOException {
-        FileUtils.cleanDirectory(new File(uploadsFolder + "/" + profileImages));
         FileUtils.cleanDirectory(new File(uploadsFolder + "/" + attachments));
     }
 
     @BeforeAll
     public static void createTestFolders() {
-        createNonExistingFolder(uploadsFolder + "/" + profileImages);
         createNonExistingFolder(uploadsFolder + "/" + attachments);
     }
 

@@ -12,7 +12,6 @@ import java.util.Collection;
 import java.util.Collections;
 
 @Configuration
-//@Profile("test")
 public class DbConfig extends AbstractMongoClientConfiguration {
 
     @Value("${spring.data.mongodb.uri}")
@@ -25,8 +24,8 @@ public class DbConfig extends AbstractMongoClientConfiguration {
 
     @Override
     public MongoClient mongoClient() {
-        ConnectionString connectionString = new ConnectionString(uri);
-        MongoClientSettings mongoClientSettings = MongoClientSettings.builder()
+        var connectionString = new ConnectionString(uri);
+        var mongoClientSettings = MongoClientSettings.builder()
                 .applyConnectionString(connectionString)
                 .build();
 

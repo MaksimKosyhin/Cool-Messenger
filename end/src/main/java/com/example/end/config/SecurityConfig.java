@@ -72,7 +72,7 @@ public class SecurityConfig {
     return username -> {
       var user = userRepository.findByUsername(username)
               .orElseThrow(() -> new ApiException(
-                      HttpStatus.UNAUTHORIZED, Map.of("auth", "wrong email or password")));
+                      HttpStatus.UNAUTHORIZED, Map.of("auth", "wrong username or password")));
 
       if(!user.isEnabled()) {
         throw new ApiException(
