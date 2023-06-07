@@ -12,10 +12,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 @ControllerAdvice
-public class DefaultExceptionHandler {
+public class GlobalExceptionHandler {
     @ExceptionHandler
     protected ResponseEntity<?> handleHttpException(ApiException ex) {
-        return ResponseEntity.status(ex.status).body(ex.errors);
+        return ResponseEntity.status(ex.status).body(ex.getMessage());
     }
 
     @ExceptionHandler

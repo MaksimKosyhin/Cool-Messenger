@@ -10,6 +10,7 @@ import com.example.end.domain.model.User;
 import com.example.end.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.javafaker.Faker;
+import com.github.javafaker.Name;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,12 +18,17 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,8 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-public class AuthControllerTest {
-
+public class UserControllerTest {
     private static final String REGISTRATION_PATH = "/api/v1/users";
 
     private final MockMvc mockMvc;
@@ -50,14 +55,17 @@ public class AuthControllerTest {
 
     private final UserEditMapper userEditMapper;
 
+    private final JwtEncoder encoder;
+
     @Autowired
-    public AuthControllerTest(MockMvc mockMvc, ObjectMapper objectMapper, JavaMailSender mailSender, UserRepository userRepository, UserViewMapper userViewMapper, UserEditMapper userEditMapper) {
+    public UserControllerTest(MockMvc mockMvc, ObjectMapper objectMapper, JavaMailSender mailSender, UserRepository userRepository, UserViewMapper userViewMapper, UserEditMapper userEditMapper, JwtEncoder encoder) {
         this.mockMvc = mockMvc;
         this.objectMapper = objectMapper;
         this.mailSender = (MailConfig.MockMailSender) mailSender;
         this.userRepository = userRepository;
         this.userViewMapper = userViewMapper;
         this.userEditMapper = userEditMapper;
+        this.encoder = encoder;
     }
 
     @AfterEach

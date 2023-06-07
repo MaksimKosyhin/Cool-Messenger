@@ -1,12 +1,14 @@
 package com.example.end.service;
 
 import com.example.end.exception.ApiException;
+import com.github.javafaker.Faker;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
@@ -68,12 +70,17 @@ public class FileServiceImplTest {
     @Test
     public void testEmptyFileThrowsException() {
         Path path = Paths.get("test");
-        MockMultipartFile file = new MockMultipartFile("file", "test.txt",
+        String fileName = "text.txt";
+        MockMultipartFile file = new MockMultipartFile("file", fileName,
                 "text/plain", new byte[0]);
+
+        ApiException expected = new ApiException(
+                HttpStatus.BAD_REQUEST,
+                String.format("file %s is empty", fileName));
 
         assertThatExceptionOfType(ApiException.class)
                 .isThrownBy(() -> fileService.save(file, path))
-                .satisfies(ex -> ex.errors.equals(Map.of("file", "file \"test.txt\" is empty")));
+                .satisfies(ex -> ex.equals(expected));
     }
 
     @Test
@@ -94,9 +101,13 @@ public class FileServiceImplTest {
         MockMultipartFile file = new MockMultipartFile("file", "image.txt",
                 "text/plain", new byte[0]);
 
+        ApiException expected = new ApiException(
+                HttpStatus.BAD_REQUEST,
+                "image files must have png or jpeg extension");
+
         assertThatExceptionOfType(ApiException.class)
                 .isThrownBy(() -> fileService.saveProfileImage(file, path))
-                .matches(ex -> ex.errors.equals(Map.of("file", "image files must have png or jpeg extension")));
+                .satisfies(ex -> ex.equals(expected));
     }
 
     @Test
@@ -123,9 +134,13 @@ public class FileServiceImplTest {
     public void testDeletingNonExistingFileThrowsException() {
         Path path = Paths.get(uploadsFolder, "non_existing_file.txt");
 
+        ApiException expected = new ApiException(
+                HttpStatus.BAD_REQUEST,
+                String.format("resourse: %s doesn't exist", path));
+
         assertThatExceptionOfType(ApiException.class)
                 .isThrownBy(() -> fileService.delete(path))
-                .matches(ex -> ex.errors.equals(Map.of("file", String.format("resourse: %s doesn't exist", path))));
+                .satisfies(ex -> ex.equals(expected));
     }
 }
 

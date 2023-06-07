@@ -33,7 +33,7 @@ public class FileServiceImpl implements FileService{
     public Path saveProfileImage(MultipartFile file, Path path) {
         if(!IMAGE_EXTENSIONS.contains(file.getContentType())) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
-                    Map.of("file", "image files must have png or jpeg extension"));
+                    "image files must have png or jpeg extension");
         }
 
         return save(file, path);
@@ -49,7 +49,7 @@ public class FileServiceImpl implements FileService{
     public Path save(MultipartFile file, Path path) {
         if (file.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
-                    Map.of("file", String.format("file: \"%s\" is empty", file.getOriginalFilename())));
+                    String.format("file: \"%s\" is empty", file.getOriginalFilename()));
         }
 
         var destinationFile = generatePath(Paths.get(uploadsFolder).resolve(path), file.getOriginalFilename());
@@ -58,7 +58,7 @@ public class FileServiceImpl implements FileService{
             Files.createDirectories(destinationFile.getParent());
             Files.copy(inputStream, destinationFile);
         } catch (IOException e) {
-            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, Map.of("file", e.getMessage()));
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
 
         return destinationFile;
@@ -85,14 +85,14 @@ public class FileServiceImpl implements FileService{
 
         if (!file.exists()) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
-                    Map.of("file", String.format("resourse: %s doesn't exist", path)));
+                    String.format("resourse: %s doesn't exist", path));
         }
 
         if(file.isDirectory()) {
             try {
                 FileUtils.cleanDirectory(file);
             } catch (IOException e) {
-                throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, Map.of("file", e.getMessage()));
+                throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
             }
         }
 

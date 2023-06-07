@@ -6,6 +6,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Document(collection = "users")
@@ -71,7 +72,7 @@ public class User implements UserDetails {
     @Data
     public static class Remainder {
         private String id;
-        private Date notifyAt;
+        private LocalDateTime notifyAt;
         private String message;
     }
 }
