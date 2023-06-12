@@ -15,7 +15,9 @@ public interface UserRepository extends MongoRepository<User, String> {
     public boolean existsByUsername(String username);
     public Optional<User> findByUsername(String username);
 
-    @Query("SELECT u.id FROM user u WHERE u.username :username")
-    public String findIdByUsername(@Param("username") String username);
+    public Optional<User> findByEmail(String email);
+
+    @Query("SELECT u.id FROM user u WHERE u.identifier :identifier")
+    public String findIdByUsername(@Param("identifier") String username);
 
 }

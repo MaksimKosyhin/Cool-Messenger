@@ -1,5 +1,6 @@
 package com.example.end.config;
 
+import com.example.end.domain.model.User;
 import com.example.end.exception.ApiException;
 import com.example.end.repository.UserRepository;
 import com.nimbusds.jose.jwk.JWKSet;
@@ -33,7 +34,6 @@ import org.springframework.web.filter.CorsFilter;
 
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.util.Map;
 
 import static java.lang.String.format;
 
@@ -69,10 +69,16 @@ public class SecurityConfig {
 
   @Bean
   public UserDetailsService userDetailsService(UserRepository userRepository) {
-    return username -> {
-      var user = userRepository.findByUsername(username)
-              .orElseThrow(() -> new ApiException(
-                      HttpStatus.UNAUTHORIZED, "wrong username or password"));
+    return identifier -> {
+      User user;
+
+      if(userRepository.existsByUsername(identifier)) {
+        user = userRepository.findByUsername(identifier).get();
+      } else if(userRepository.existsByEmail(identifier)) {
+        user = userRepository.findByEmail(identifier).get();
+      } else {
+        throw new ApiException(HttpStatus.UNAUTHORIZED, "bad credentials");
+      }
 
       if(!user.isEnabled()) {
         throw new ApiException(

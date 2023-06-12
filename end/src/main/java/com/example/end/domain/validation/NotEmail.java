@@ -8,11 +8,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Constraint(validatedBy = FoldersValidator.class)
+@Constraint(validatedBy = NotEmailValidator.class)
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Remainders {
-    String message() default "hm...";
+public @interface NotEmail {
+    String message() default "username cannot be an email";
 
     Class<?>[] groups() default { };
 

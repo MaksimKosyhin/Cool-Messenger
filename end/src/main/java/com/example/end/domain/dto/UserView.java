@@ -1,7 +1,9 @@
 package com.example.end.domain.dto;
 
+import com.mongodb.DBRef;
+
 public record UserView(
-        String id,
+        DBRef ref,
         String displayName,
         String username,
         String imageUrl,

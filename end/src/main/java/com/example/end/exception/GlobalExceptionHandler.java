@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import java.util.HashMap;
-import java.util.Map;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -20,7 +19,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler
     protected ResponseEntity<?> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
+        var errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError) error).getField();
             String errorMessage = error.getDefaultMessage();
@@ -32,8 +31,21 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler
     protected ResponseEntity<?> handleAuthenticationException(AuthenticationException ex) {
+        Throwable cause = ex;
+
+        while(cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+
+        if(cause instanceof ApiException) {
+            ApiException apiException = (ApiException) cause;
+            return ResponseEntity
+                    .status(apiException.status)
+                    .body(apiException.getMessage());
+        }
+
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
-                .body(Map.of("auth", "Wrong username or password"));
+                .body(ex.getMessage());
     }
 }

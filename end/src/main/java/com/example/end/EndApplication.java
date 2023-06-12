@@ -7,8 +7,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class EndApplication {
 	//todo: configure openapi endpoints
-	//todo: how to modify exception msg of validation
 	//todo: write tests for UserController
+	//todo: fix ReferenceDao
+	//todo: notify client when referenced entity is deleted
 	public static void main(String[] args) {
 		SpringApplication.run(EndApplication.class, args);
 	}

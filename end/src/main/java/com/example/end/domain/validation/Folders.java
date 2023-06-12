@@ -12,7 +12,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Folders {
-    String message() default "hm...";
+    String message() default "invalid folders Structure";
 
     Class<?>[] groups() default { };
 

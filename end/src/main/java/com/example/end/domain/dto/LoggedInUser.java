@@ -1,8 +1,8 @@
 package com.example.end.domain.dto;
 
 import com.example.end.domain.model.User;
+import com.mongodb.DBRef;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -12,6 +12,6 @@ public record LoggedInUser(
         String info,
         String imageUrl,
         Set<User.Remainder> remainders,
-        Map<String, List<String>> folders
+        Map<String, Set<DBRef>> folders
 ) {
 }

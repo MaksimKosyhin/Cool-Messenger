@@ -5,6 +5,7 @@ import com.example.end.domain.mapper.UserEditMapper;
 import com.example.end.domain.mapper.UserViewMapper;
 import com.example.end.domain.model.User;
 import com.example.end.exception.ApiException;
+import com.example.end.repository.ReferenceDao;
 import com.example.end.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +25,7 @@ import java.time.Instant;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService{
     private final UserRepository userRepository;
+    private final ReferenceDao referenceDao;
     private final FileService fileService;
     private final JavaMailSender mailSender;
     private final AuthenticationManager authenticationManager;
@@ -36,7 +38,7 @@ public class UserServiceImpl implements UserService{
     @Override
     public Path updateProfileImage(String username, MultipartFile file) {
         var user = userRepository.findByUsername(username).get();
-        var imagePath = Path.of(username, "image");
+        var imagePath = Path.of(user.getId());
 
         Path fullPath;
         if(user.getImageUrl() == null) {
@@ -53,17 +55,26 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public LoggedInUser updateUserInfo(String username, UpdateUserRequest request) {
-
-        if(!request.username().equals(username) && userRepository.existsByUsername(request.username())) {
-            throw new ApiException(
-                    HttpStatus.BAD_REQUEST,
-                    String.format("user with username %s already exists", request.username()));
+        if(!isReferencesValid(request)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Nonexistent entity references were provided");
         }
 
         var user = userRepository.findByUsername(username).get();
         userEditMapper.update(request, user);
         userRepository.save(user);
         return userViewMapper.toLoggedInUser(user);
+    }
+
+    private boolean isReferencesValid(UpdateUserRequest request) {
+        var foldersValid = request.folders().get("all")
+                .stream()
+                .allMatch(referenceDao::existsInDatabase);
+
+        var remaindersValid = request.remainders()
+                .stream()
+                .allMatch(remainder -> referenceDao.existsInDatabase(remainder.getRef()));
+
+        return foldersValid && remaindersValid;
     }
 
     @Override
@@ -76,17 +87,6 @@ public class UserServiceImpl implements UserService{
         user.setPassword(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
     }
-
-    @Override
-    public UserView getUser(String userId) {
-        var user = userRepository.findById(userId).orElseThrow(() ->
-                new ApiException(
-                        HttpStatus.NOT_FOUND,
-                        String.format("user with id %s doesn't exist", userId)));
-
-        return userViewMapper.toUserView(user);
-    }
-
 
     @Override
     public void register(CreateUserRequest request) {
@@ -103,19 +103,24 @@ public class UserServiceImpl implements UserService{
     private void throwIfUserExists(CreateUserRequest request) {
         if(userRepository.existsByUsername(request.username())) {
             throw new ApiException(
-                    HttpStatus.UNAUTHORIZED,
+                    HttpStatus.CONFLICT,
                     "user with this username already exists");
         } else if(userRepository.existsByEmail(request.email())) {
             throw new ApiException(
-                    HttpStatus.UNAUTHORIZED,
+                    HttpStatus.CONFLICT,
                     "user with this email already exists");
         }
     }
 
     @Override
+    public boolean isUsernameOccupied(String username) {
+        return userRepository.existsByUsername(username);
+    }
+
+    @Override
     public AuthResponse login(AuthRequest request) {
         var authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.username(), request.password())
+                new UsernamePasswordAuthenticationToken(request.identifier(), request.password())
         );
 
         var user = (User) authentication.getPrincipal();
@@ -198,7 +203,7 @@ public class UserServiceImpl implements UserService{
         try{
             jwt = jwtDecoder.decode(token);
         } catch (JwtException ex) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, ex.getMessage());
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "invalid token");
         }
 
         if(jwt.getExpiresAt().isBefore(Instant.now())) {

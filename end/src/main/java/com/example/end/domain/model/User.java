@@ -1,5 +1,6 @@
 package com.example.end.domain.model;
 
+import com.mongodb.DBRef;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -7,7 +8,9 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
 
 @Document(collection = "users")
 @Data
@@ -32,7 +35,7 @@ public class User implements UserDetails {
 
     private Set<Remainder> remainders;
 
-    private Map<String, List<String>> folders;
+    private Map<String, Set<DBRef>> folders;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -71,7 +74,7 @@ public class User implements UserDetails {
 
     @Data
     public static class Remainder {
-        private String id;
+        private DBRef ref;
         private LocalDateTime notifyAt;
         private String message;
     }

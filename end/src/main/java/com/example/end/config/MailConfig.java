@@ -11,7 +11,6 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessagePreparator;
 
 import java.io.InputStream;
-import java.util.Properties;
 
 @Configuration
 public class MailConfig {

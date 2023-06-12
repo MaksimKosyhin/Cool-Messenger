@@ -1,6 +1,9 @@
 package com.example.end.controller;
 
-import com.example.end.domain.dto.*;
+import com.example.end.domain.dto.AuthRequest;
+import com.example.end.domain.dto.CreateUserRequest;
+import com.example.end.domain.dto.UpdatePasswordRequest;
+import com.example.end.domain.dto.UpdateUserRequest;
 import com.example.end.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +19,12 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
+
+    @GetMapping("identifier/{identifier}")
+    public ResponseEntity<?> isUsernameOccupied(@PathVariable String username) {
+        var response = userService.isUsernameOccupied(username);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
 
     @PostMapping("login")
     public ResponseEntity<?> login(@RequestBody AuthRequest request) {
@@ -50,7 +59,7 @@ public class UserController {
     }
 
     @PutMapping("password")
-    public ResponseEntity<?> changePassword(@RequestBody UpdatePasswordRequest request) {
+    public ResponseEntity<?> changePassword(@RequestBody @Valid UpdatePasswordRequest request) {
         var username = SecurityContextHolder.getContext().getAuthentication().getName();
         userService.changePassword(username, request);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
@@ -67,11 +76,5 @@ public class UserController {
     public ResponseEntity<?> confirmEmailChange(@RequestParam String token) {
         userService.confirmEmailChange(token);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-    }
-
-    @GetMapping("{userId}")
-    public ResponseEntity<?> getUser(@PathVariable String userId) {
-        var user = userService.getUser(userId);
-        return ResponseEntity.status(HttpStatus.OK).body(user);
     }
 }
