@@ -35,7 +35,7 @@ public class User implements UserDetails {
 
     private Set<Remainder> remainders;
 
-    private Map<String, Set<DBRef>> folders;
+    private Map<String, Set<String>> folders;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -74,8 +74,9 @@ public class User implements UserDetails {
 
     @Data
     public static class Remainder {
-        private DBRef ref;
+        private String id;
         private LocalDateTime notifyAt;
         private String message;
     }
+
 }

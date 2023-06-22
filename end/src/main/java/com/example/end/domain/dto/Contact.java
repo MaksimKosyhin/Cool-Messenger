@@ -1,11 +1,12 @@
 package com.example.end.domain.dto;
 
+import com.example.end.domain.model.EntityReference;
 import com.mongodb.DBRef;
 
-public record UserView(
-        DBRef ref,
+public record Contact(
+        String id,
         String displayName,
-        String username,
+        String identifier,
         String imageUrl,
         String info
 ) {

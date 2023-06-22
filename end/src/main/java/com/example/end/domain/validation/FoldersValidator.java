@@ -7,10 +7,10 @@ import jakarta.validation.ConstraintValidatorContext;
 import java.util.Map;
 import java.util.Set;
 
-public class FoldersValidator implements ConstraintValidator<Folders, Map<String, Set<DBRef>>> {
+public class FoldersValidator implements ConstraintValidator<Folders, Map<String, Set<String>>> {
 
     @Override
-    public boolean isValid(Map<String, Set<DBRef>> folders, ConstraintValidatorContext context) {
+    public boolean isValid(Map<String, Set<String>> folders, ConstraintValidatorContext context) {
         if(folders == null) {
             return true;
         }
@@ -21,7 +21,7 @@ public class FoldersValidator implements ConstraintValidator<Folders, Map<String
             return false;
         }
 
-        for(Set<DBRef> ids: folders.values()) {
+        for(Set<String> ids: folders.values()) {
             if(!all.containsAll(ids)) {
                 return false;
             }

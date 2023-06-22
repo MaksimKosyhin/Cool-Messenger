@@ -2,6 +2,7 @@ package com.example.end.controller;
 
 import com.example.end.domain.dto.*;
 import com.example.end.domain.mapper.UserViewMapper;
+import com.example.end.domain.model.EntityReference;
 import com.example.end.domain.model.User;
 import com.example.end.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +25,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -86,7 +88,7 @@ public class UserControllerTest {
 
         AuthResponse result = objectMapper.readValue(response, AuthResponse.class);
         assertThat(result.token()).isNotEmpty();
-        assertThat(result.user()).isEqualTo(userViewMapper.toLoggedInUser(user));
+        assertThat(result.user()).isEqualTo(userViewMapper.toLoggedInUser(user, Set.of()));
     }
 
     @Test
@@ -106,7 +108,7 @@ public class UserControllerTest {
 
         AuthResponse result = objectMapper.readValue(response, AuthResponse.class);
         assertThat(result.token()).isNotEmpty();
-        assertThat(result.user()).isEqualTo(userViewMapper.toLoggedInUser(user));
+        assertThat(result.user()).isEqualTo(userViewMapper.toLoggedInUser(user, Set.of()));
     }
 
     @Test
@@ -337,17 +339,16 @@ public class UserControllerTest {
         user2 = userRepository.findByUsername(user2.getUsername()).get();
 
         User.Remainder remainder = new User.Remainder();
-        remainder.setRef(new DBRef("users", user2.getId()));
+        remainder.setId(user2.getId());
         remainder.setMessage(faker.lorem().sentence());
         remainder.setNotifyAt(LocalDateTime.now());
 
-        Set<DBRef> folders = Set.of(new DBRef("users", user2.getId()));
+        Set<String> folders = Set.of(user2.getId());
 
         UpdateUserRequest request = new UpdateUserRequest(
                 faker.name().name(),
                 faker.lorem().sentence(),
-                Set.of(remainder),
-                Map.of("all", folders)
+                Set.of(remainder)
         );
 
         String response = mockMvc.perform(put(REGISTRATION_PATH)
@@ -361,13 +362,12 @@ public class UserControllerTest {
         LoggedInUser result = objectMapper.readValue(response, LoggedInUser.class);
         assertThat(result.info()).isEqualTo(request.info());
         assertThat(result.displayName()).isEqualTo(request.displayName());
-        assertThat(result.folders()).isEqualTo(request.folders());
         assertThat(result.remainders()).isEqualTo(request.remainders());
     }
 
     @Test
     @WithMockUser(username = "test-user", password = "test-password")
-    public void updateUserInfo_withInValidRequest_bsdRequest() throws Exception {
+    public void updateUserInfo_withInValidRequest_badRequest() throws Exception {
         User user1 = getValidUser();
         user1.setUsername("test-user");
         user1.setPassword("test-password");
@@ -380,17 +380,14 @@ public class UserControllerTest {
         userRepository.delete(user2);
 
         User.Remainder remainder = new User.Remainder();
-        remainder.setRef(new DBRef("users", user2.getId()));
+        remainder.setId(user2.getId());
         remainder.setMessage(faker.lorem().sentence());
         remainder.setNotifyAt(LocalDateTime.now());
-
-        Set<DBRef> folders = Set.of(new DBRef("users", user2.getId()));
 
         UpdateUserRequest request = new UpdateUserRequest(
                 faker.name().name(),
                 faker.lorem().sentence(),
-                Set.of(remainder),
-                Map.of("all", folders)
+                Set.of(remainder)
         );
 
         String response = mockMvc.perform(put(REGISTRATION_PATH)
@@ -496,7 +493,7 @@ public class UserControllerTest {
         user.setUsername(faker.name().name());
         user.setEmail(faker.internet().emailAddress());
         user.setPassword(faker.internet().password(5, 20));
-        user.setFolders(Map.of("all", Set.of()));
+        user.setFolders(Map.of("all", new HashSet<>()));
         return user;
     }
 

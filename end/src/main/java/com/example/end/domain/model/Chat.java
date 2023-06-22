@@ -6,7 +6,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "chats")
 @Data
-public class PublicChat {
+public class Chat {
     @Id
     private String id;
 
@@ -18,13 +18,11 @@ public class PublicChat {
 
     private String imageUrl;
 
-    private Type type;
+    private ChatType type;
+
+    private boolean isDialogue;
 
     private boolean exclusive;
 
     private boolean closed;
-
-    public enum Type{
-        GROUP, CHANNEL
-    }
 }

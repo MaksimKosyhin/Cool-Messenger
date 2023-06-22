@@ -5,8 +5,9 @@ import com.example.end.domain.mapper.UserEditMapper;
 import com.example.end.domain.mapper.UserViewMapper;
 import com.example.end.domain.model.User;
 import com.example.end.exception.ApiException;
-import com.example.end.repository.ReferenceDao;
+import com.example.end.repository.ContactsDao;
 import com.example.end.repository.UserRepository;
+import com.mongodb.DBRef;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.SimpleMailMessage;
@@ -20,12 +21,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService{
     private final UserRepository userRepository;
-    private final ReferenceDao referenceDao;
+    private final ContactsDao contactsDao;
     private final FileService fileService;
     private final JavaMailSender mailSender;
     private final AuthenticationManager authenticationManager;
@@ -55,26 +57,27 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public LoggedInUser updateUserInfo(String username, UpdateUserRequest request) {
-        if(!isReferencesValid(request)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Nonexistent entity references were provided");
+        var user = userRepository.findByUsername(username).get();
+
+        if(!isRemaindersValid(request, user)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "remainders can only reference personal contacts");
         }
 
-        var user = userRepository.findByUsername(username).get();
         userEditMapper.update(request, user);
         userRepository.save(user);
-        return userViewMapper.toLoggedInUser(user);
+        //todo: implement this
+        return userViewMapper.toLoggedInUser(user, null);
     }
 
-    private boolean isReferencesValid(UpdateUserRequest request) {
-        var foldersValid = request.folders().get("all")
-                .stream()
-                .allMatch(referenceDao::existsInDatabase);
+    private boolean isRemaindersValid(UpdateUserRequest request, User user) {
+        var all = user.getFolders().get("all");
 
-        var remaindersValid = request.remainders()
+        var remaindersId = request.remainders()
                 .stream()
-                .allMatch(remainder -> referenceDao.existsInDatabase(remainder.getRef()));
+                .map(User.Remainder::getId)
+                .collect(Collectors.toSet());
 
-        return foldersValid && remaindersValid;
+        return all.containsAll(remaindersId);
     }
 
     @Override
@@ -125,7 +128,8 @@ public class UserServiceImpl implements UserService{
 
         var user = (User) authentication.getPrincipal();
 
-        var loggedInUser = userViewMapper.toLoggedInUser(user);
+        //todo: implement this
+        var loggedInUser = userViewMapper.toLoggedInUser(user, null);
         var token = getAuthToken(user.getUsername());
         return new AuthResponse(loggedInUser, token);
     }
@@ -147,7 +151,7 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public void changeEmail(String username, String email) {
-        var userId = userRepository.findIdByUsername(username);
+        var userId = userRepository.findByUsername(username).get().getId();
         var token = getConfirmationToken(userId, email);
         sendEmailConfirmation(email, token);
     }

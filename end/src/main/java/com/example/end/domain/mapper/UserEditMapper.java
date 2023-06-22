@@ -10,6 +10,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -18,12 +19,7 @@ import static org.mapstruct.NullValuePropertyMappingStrategy.IGNORE;
 
 @Mapper(componentModel = "spring")
 public abstract class UserEditMapper {
-    @Mapping( target = "folders", expression = "java(defaultFolder())")
     public abstract User create(CreateUserRequest request);
-
-    public Map<String, Set<DBRef>> defaultFolder(){
-        return Map.of("all", Collections.emptySet());
-    }
 
     @BeanMapping(nullValueCheckStrategy = ALWAYS, nullValuePropertyMappingStrategy = IGNORE)
     public abstract void update(UpdateUserRequest request, @MappingTarget User user);
