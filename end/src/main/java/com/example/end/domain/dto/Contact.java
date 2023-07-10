@@ -1,10 +1,9 @@
 package com.example.end.domain.dto;
 
-import com.example.end.domain.model.EntityReference;
-import com.mongodb.DBRef;
+import org.bson.types.ObjectId;
 
 public record Contact(
-        String id,
+        ObjectId id,
         String displayName,
         String identifier,
         String imageUrl,

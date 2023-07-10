@@ -2,12 +2,11 @@ package com.example.end.controller;
 
 import com.example.end.domain.dto.*;
 import com.example.end.domain.mapper.UserViewMapper;
-import com.example.end.domain.model.EntityReference;
 import com.example.end.domain.model.User;
 import com.example.end.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.javafaker.Faker;
-import com.mongodb.DBRef;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -88,7 +87,7 @@ public class UserControllerTest {
 
         AuthResponse result = objectMapper.readValue(response, AuthResponse.class);
         assertThat(result.token()).isNotEmpty();
-        assertThat(result.user()).isEqualTo(userViewMapper.toLoggedInUser(user, Set.of()));
+        assertThat(result.user()).isEqualTo(userViewMapper.toLoggedInUser(user));
     }
 
     @Test
@@ -108,7 +107,7 @@ public class UserControllerTest {
 
         AuthResponse result = objectMapper.readValue(response, AuthResponse.class);
         assertThat(result.token()).isNotEmpty();
-        assertThat(result.user()).isEqualTo(userViewMapper.toLoggedInUser(user, Set.of()));
+        assertThat(result.user()).isEqualTo(userViewMapper.toLoggedInUser(user));
     }
 
     @Test
@@ -275,7 +274,7 @@ public class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)));
 
         User user = userRepository.findByUsername(request.username()).get();
-        String token = getValidConfirmationToken(user.getId(), user.getEmail());
+        String token = getValidConfirmationToken(user.getId().toString(), user.getEmail());
 
         mockMvc.perform(put(REGISTRATION_PATH + "/confirm")
                 .param("token", token))
@@ -299,7 +298,7 @@ public class UserControllerTest {
                 .content(objectMapper.writeValueAsString(request)));
 
         User user = userRepository.findByUsername(request.username()).get();
-        String token = getExpiredConfirmationToken(user.getId(), user.getEmail());
+        String token = getExpiredConfirmationToken(user.getId().toString(), user.getEmail());
 
         String response = mockMvc.perform(put(REGISTRATION_PATH + "/confirm")
                         .param("token", token))
@@ -343,12 +342,13 @@ public class UserControllerTest {
         remainder.setMessage(faker.lorem().sentence());
         remainder.setNotifyAt(LocalDateTime.now());
 
-        Set<String> folders = Set.of(user2.getId());
+        Set<ObjectId> folders = Set.of(user2.getId());
 
         UpdateUserRequest request = new UpdateUserRequest(
                 faker.name().name(),
                 faker.lorem().sentence(),
-                Set.of(remainder)
+                Map.of(),
+                Set.of()
         );
 
         String response = mockMvc.perform(put(REGISTRATION_PATH)
@@ -362,7 +362,6 @@ public class UserControllerTest {
         LoggedInUser result = objectMapper.readValue(response, LoggedInUser.class);
         assertThat(result.info()).isEqualTo(request.info());
         assertThat(result.displayName()).isEqualTo(request.displayName());
-        assertThat(result.remainders()).isEqualTo(request.remainders());
     }
 
     @Test
@@ -387,7 +386,8 @@ public class UserControllerTest {
         UpdateUserRequest request = new UpdateUserRequest(
                 faker.name().name(),
                 faker.lorem().sentence(),
-                Set.of(remainder)
+                Map.of(),
+                Set.of()
         );
 
         String response = mockMvc.perform(put(REGISTRATION_PATH)
@@ -482,7 +482,7 @@ public class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)));
 
         user = userRepository.findByUsername(user.getUsername()).get();
-        String token = getValidConfirmationToken(user.getId(), user.getEmail());
+        String token = getValidConfirmationToken(user.getId().toString(), user.getEmail());
 
         mockMvc.perform(put(REGISTRATION_PATH + "/confirm")
                         .param("token", token));

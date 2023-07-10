@@ -1,22 +1,18 @@
 package com.example.end.domain.model;
 
-import com.mongodb.DBRef;
 import lombok.Data;
+import org.bson.types.ObjectId;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Set;
 
 @Document(collection = "chat-members")
 @Data
-public class ChatMembers {
-    private String chatId;
-    private Set<Member> members;
-
-    @Data
-    public static class Member {
-        private String userId;
-        private Set<Permission> permissions;
-    }
+public class ChatMember {
+    @Id
+    private ChatMemberId id;
+    private Set<Permission> permissions;
 
     public enum Permission {
         DELETE_CHAT,
@@ -30,4 +26,6 @@ public class ChatMembers {
         WAITING,
         BANNED
     }
+
+    public static record ChatMemberId(ObjectId chatId, ObjectId userId){}
 }

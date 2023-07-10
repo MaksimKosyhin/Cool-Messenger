@@ -1,6 +1,7 @@
 package com.example.end.domain.model;
 
 import lombok.Data;
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -8,7 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Data
 public class Chat {
     @Id
-    private String id;
+    private ObjectId id;
 
     private String title;
 
@@ -20,9 +21,11 @@ public class Chat {
 
     private ChatType type;
 
-    private boolean isDialogue;
-
     private boolean exclusive;
 
     private boolean closed;
+
+    public enum ChatType {
+        GROUP, CHANNEL, DIALOGUE;
+    }
 }

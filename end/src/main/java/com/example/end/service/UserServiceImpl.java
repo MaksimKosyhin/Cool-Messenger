@@ -5,9 +5,7 @@ import com.example.end.domain.mapper.UserEditMapper;
 import com.example.end.domain.mapper.UserViewMapper;
 import com.example.end.domain.model.User;
 import com.example.end.exception.ApiException;
-import com.example.end.repository.ContactsDao;
 import com.example.end.repository.UserRepository;
-import com.mongodb.DBRef;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.SimpleMailMessage;
@@ -21,13 +19,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService{
     private final UserRepository userRepository;
-    private final ContactsDao contactsDao;
     private final FileService fileService;
     private final JavaMailSender mailSender;
     private final AuthenticationManager authenticationManager;
@@ -40,7 +36,7 @@ public class UserServiceImpl implements UserService{
     @Override
     public Path updateProfileImage(String username, MultipartFile file) {
         var user = userRepository.findByUsername(username).get();
-        var imagePath = Path.of(user.getId());
+        var imagePath = Path.of(user.getId().toString());
 
         Path fullPath;
         if(user.getImageUrl() == null) {
@@ -59,25 +55,38 @@ public class UserServiceImpl implements UserService{
     public LoggedInUser updateUserInfo(String username, UpdateUserRequest request) {
         var user = userRepository.findByUsername(username).get();
 
-        if(!isRemaindersValid(request, user)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "remainders can only reference personal contacts");
+        if(!isReferencesValid(request, user)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid contact references");
         }
 
         userEditMapper.update(request, user);
         userRepository.save(user);
-        //todo: implement this
-        return userViewMapper.toLoggedInUser(user, null);
+        return userViewMapper.toLoggedInUser(user);
     }
 
-    private boolean isRemaindersValid(UpdateUserRequest request, User user) {
-        var all = user.getFolders().get("all");
+    private boolean isReferencesValid(UpdateUserRequest request, User user) {
+        final var all = request.folders().get("all");
 
-        var remaindersId = request.remainders()
+        if(!all.equals(user.getFolders().get("all"))) {
+            return false;
+        }
+
+        var foldersValid =  request
+                .folders()
+                .values()
+                .stream()
+                .allMatch(all::containsAll);
+
+        if(!foldersValid) {
+            return false;
+        }
+
+        var remaindersValid = request.remainders()
                 .stream()
                 .map(User.Remainder::getId)
-                .collect(Collectors.toSet());
+                .allMatch(all::contains);
 
-        return all.containsAll(remaindersId);
+        return remaindersValid;
     }
 
     @Override
@@ -99,7 +108,7 @@ public class UserServiceImpl implements UserService{
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user = userRepository.save(user);
 
-        var token = getConfirmationToken(user.getId(), user.getEmail());
+        var token = getConfirmationToken(user.getId().toString(), user.getEmail());
         sendEmailConfirmation(user.getEmail(), token);
     }
 
@@ -129,7 +138,7 @@ public class UserServiceImpl implements UserService{
         var user = (User) authentication.getPrincipal();
 
         //todo: implement this
-        var loggedInUser = userViewMapper.toLoggedInUser(user, null);
+        var loggedInUser = userViewMapper.toLoggedInUser(user);
         var token = getAuthToken(user.getUsername());
         return new AuthResponse(loggedInUser, token);
     }
@@ -152,7 +161,7 @@ public class UserServiceImpl implements UserService{
     @Override
     public void changeEmail(String username, String email) {
         var userId = userRepository.findByUsername(username).get().getId();
-        var token = getConfirmationToken(userId, email);
+        var token = getConfirmationToken(userId.toString(), email);
         sendEmailConfirmation(email, token);
     }
 
