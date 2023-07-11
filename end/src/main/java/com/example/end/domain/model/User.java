@@ -3,6 +3,7 @@ package com.example.end.domain.model;
 import lombok.Data;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,7 +21,7 @@ public class User implements UserDetails {
     private ObjectId id;
 
     private String displayName;
-
+    @Indexed
     private String username;
 
     private String email;

@@ -11,9 +11,8 @@ import static org.mapstruct.NullValueCheckStrategy.ALWAYS;
 import static org.mapstruct.NullValuePropertyMappingStrategy.IGNORE;
 
 @Mapper(componentModel = "spring")
-public abstract class UserEditMapper {
-    public abstract User create(CreateUserRequest request);
+public interface UserEditMapper {
+    public User create(CreateUserRequest request);
 
-    @BeanMapping(nullValueCheckStrategy = ALWAYS, nullValuePropertyMappingStrategy = IGNORE)
-    public abstract void update(UpdateUserRequest request, @MappingTarget User user);
+    public void update(UpdateUserRequest request, @MappingTarget User user);
 }

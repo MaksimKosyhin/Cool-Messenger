@@ -20,18 +20,13 @@ import org.springframework.web.multipart.MultipartFile;
 public class UserController {
     private final UserService userService;
 
-    @GetMapping("identifier/{identifier}")
-    public ResponseEntity<?> isUsernameOccupied(@PathVariable String username) {
-        var response = userService.isUsernameOccupied(username);
-        return ResponseEntity.status(HttpStatus.OK).body(response);
-    }
-
     @PostMapping("login")
     public ResponseEntity<?> login(@RequestBody AuthRequest request) {
         var response = userService.login(request);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    //todo: check chat with given identifier not exists
     @PostMapping
     public ResponseEntity<?> register(@RequestBody @Valid CreateUserRequest request) {
         userService.register(request);

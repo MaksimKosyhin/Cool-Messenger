@@ -7,6 +7,7 @@ import com.example.end.domain.model.User;
 import com.example.end.exception.ApiException;
 import com.example.end.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.bson.types.ObjectId;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 
 @Service
@@ -35,7 +37,13 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public Path updateProfileImage(String username, MultipartFile file) {
-        var user = userRepository.findByUsername(username).get();
+        var user = getUserOrThrow(username);
+
+        if(file.isEmpty() && user.getImageUrl() != null) {
+            fileService.delete(Paths.get(user.getImageUrl()));
+            return null;
+        }
+
         var imagePath = Path.of(user.getId().toString());
 
         Path fullPath;
@@ -53,15 +61,22 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public LoggedInUser updateUserInfo(String username, UpdateUserRequest request) {
-        var user = userRepository.findByUsername(username).get();
+        var user = getUserOrThrow(username);
 
         if(!isReferencesValid(request, user)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "invalid contact references");
         }
 
         userEditMapper.update(request, user);
-        userRepository.save(user);
+        user = userRepository.save(user);
         return userViewMapper.toLoggedInUser(user);
+    }
+
+    private User getUserOrThrow(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND,
+                        String.format("user with username: %s doesn't exist")));
     }
 
     private boolean isReferencesValid(UpdateUserRequest request, User user) {
@@ -112,6 +127,7 @@ public class UserServiceImpl implements UserService{
         sendEmailConfirmation(user.getEmail(), token);
     }
 
+    //todo: ?put into controller
     private void throwIfUserExists(CreateUserRequest request) {
         if(userRepository.existsByUsername(request.username())) {
             throw new ApiException(
@@ -125,11 +141,6 @@ public class UserServiceImpl implements UserService{
     }
 
     @Override
-    public boolean isUsernameOccupied(String username) {
-        return userRepository.existsByUsername(username);
-    }
-
-    @Override
     public AuthResponse login(AuthRequest request) {
         var authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.identifier(), request.password())
@@ -137,7 +148,6 @@ public class UserServiceImpl implements UserService{
 
         var user = (User) authentication.getPrincipal();
 
-        //todo: implement this
         var loggedInUser = userViewMapper.toLoggedInUser(user);
         var token = getAuthToken(user.getUsername());
         return new AuthResponse(loggedInUser, token);
@@ -160,7 +170,7 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public void changeEmail(String username, String email) {
-        var userId = userRepository.findByUsername(username).get().getId();
+        var userId = getUserOrThrow(username).getId();
         var token = getConfirmationToken(userId.toString(), email);
         sendEmailConfirmation(email, token);
     }
@@ -197,15 +207,20 @@ public class UserServiceImpl implements UserService{
     @Override
     public void confirmRegistration(String token) {
         var jwt = decodeFromToken(token);
-        var user = userRepository.findById(jwt.getSubject()).get();
+        var user = userRepository.findById(new ObjectId(jwt.getSubject())).get();
         user.setEnabled(true);
         userRepository.save(user);
     }
 
     @Override
+    public boolean userExists(String username) {
+        return userRepository.existsByUsername(username);
+    }
+
+    @Override
     public void confirmEmailChange(String token) {
         var jwt = decodeFromToken(token);
-        var user = userRepository.findById(jwt.getSubject()).get();
+        var user = userRepository.findById(new ObjectId(jwt.getSubject())).get();
         user.setEmail(jwt.getClaimAsString("email"));
         userRepository.save(user);
     }

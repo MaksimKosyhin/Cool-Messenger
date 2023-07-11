@@ -1,6 +1,5 @@
 package com.example.end.config.json;
 
-import com.example.end.config.json.serializer.DBRefDeserializer;
 import com.example.end.config.json.serializer.LocalDateTimeDeserializer;
 import com.example.end.config.json.serializer.LocalDateTimeSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,7 +18,6 @@ public class ObjectMapperConfig {
         var objectMapper = new ObjectMapper();
 
         var simpleModule = new SimpleModule();
-        simpleModule.addDeserializer(DBRef.class, new DBRefDeserializer());
         objectMapper.registerModule(simpleModule);
 
         var javaTimeModule = new JavaTimeModule();

@@ -128,12 +128,26 @@ public class ContactsDaoImpl implements ContactsDao {
         return projectContacts;
     }
 
+    //todo: i need this?
     @Override
     public boolean contactExists(ObjectId chatId) {
         var chats = db.getCollection("chats");
         return chats.countDocuments(new BasicDBObject("_id", chatId)) == 1;
     }
 
+
+    @Override
+    public boolean contactExists(String identifier) {
+        var chats = db.getCollection("chats");
+        var chatExists = chats.countDocuments(new BasicDBObject("identifier", identifier)) == 1;
+
+        var users = db.getCollection("users");
+        var userExists = chats.countDocuments(new BasicDBObject("username", identifier)) == 1;
+
+        return userExists || chatExists;
+    }
+
+    //todo: save chat members
     @Override
     public boolean addContact(String username, ObjectId chatId) {
         var users = db.getCollection("users");

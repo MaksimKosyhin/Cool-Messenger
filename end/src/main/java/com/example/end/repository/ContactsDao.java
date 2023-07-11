@@ -10,6 +10,7 @@ public interface ContactsDao {
     public List<Contact> getContacts(String username);
     //todo: add contact upon channel creation
     public boolean contactExists(ObjectId chatId);
+    public boolean contactExists(String identifier);
     public boolean addContact(String username, ObjectId chatId);
     public boolean removeContact(String username, ObjectId chatId);
     public List<Contact> getChatMembers(ObjectId chatId, Pageable pageable);
