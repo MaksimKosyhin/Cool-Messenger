@@ -11,7 +11,6 @@ import java.nio.file.Path;
 
 public interface ChatService {
     public Contact createChat(CreateChatRequest request);
-
     public boolean chatExists(String identifier);
     public Contact getChat(ObjectId chatId);
     public Contact updateChatInfo(ObjectId chatId, UpdateChatRequest request);

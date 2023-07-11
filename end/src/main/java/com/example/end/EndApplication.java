@@ -8,6 +8,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class EndApplication {
 	//todo: configure openapi endpoints
 	//todo: notify client when referenced entity is deleted
+	//todo: improve change username process by deleting old username upon token expiration
 	public static void main(String[] args) {
 		SpringApplication.run(EndApplication.class, args);
 	}

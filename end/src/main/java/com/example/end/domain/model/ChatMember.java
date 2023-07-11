@@ -5,6 +5,8 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 @Document(collection = "chat-members")
@@ -15,16 +17,14 @@ public class ChatMember {
     private Set<Permission> permissions;
 
     public enum Permission {
+        CHANGE_PERMISSIONS,
         DELETE_CHAT,
-        MAKE_MODERATOR,
-        REMOVE_MODERATOR,
-        BAN,
+        ACCESS_CHAT,
+        UPDATE_CHAT_INFO,
         DELETE_ALL_MESSAGES,
         SEND_MESSAGE,
         DELETE_PERSONAL_MESSAGES,
-        EDIT_PERSONAL_MESSAGES,
-        WAITING,
-        BANNED
+        EDIT_PERSONAL_MESSAGES
     }
 
     public static record ChatMemberId(ObjectId chatId, ObjectId userId){}
