@@ -7,9 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.http.HttpStatus;
 
-import static com.example.end.domain.model.ChatMember.*;
-
-import java.util.Set;
+import static com.example.end.domain.model.ChatMember.ChatMemberId;
+import static com.example.end.domain.model.ChatMember.Permission;
 
 @RequiredArgsConstructor
 public class ChatMemberServiceImpl implements ChatMemberService{
@@ -24,36 +23,29 @@ public class ChatMemberServiceImpl implements ChatMemberService{
 
     @Override
     public ChatMember addChatCreator(ChatMemberId id) {
-        var permissions = Set.of(
-                Permission.ACCESS_CHAT,
-                Permission.SEND_MESSAGE,
-                Permission.CHANGE_PERMISSIONS,
-                Permission.DELETE_CHAT,
-                Permission.DELETE_ALL_MESSAGES,
-                Permission.DELETE_PERSONAL_MESSAGES,
-                Permission.EDIT_PERSONAL_MESSAGES,
-                Permission.UPDATE_CHAT_INFO
-        );
-
         var chatMember = new ChatMember();
         chatMember.setId(id);
-        chatMember.setPermissions(permissions);
+        chatMember.setPermissions(Permission.getAll());
         return chatMemberRepository.save(chatMember);
     }
 
     @Override
-    public ChatMember changePermissions(ChatMemberId id, ChatMember member) {
-        var suggester = getMemberOrThrow(id);
+    public ChatMember addMember(ChatMember member) {
+        return chatMemberRepository.save(member);
+    }
 
-        if(id.chatId().equals(member.getId().chatId()) &&
-                suggester.getPermissions().contains(Permission.CHANGE_PERMISSIONS) &&
-                suggester.getPermissions().containsAll(member.getPermissions())) {
+    @Override
+    public ChatMember changePermissions(ObjectId senderId, ChatMember member) {
+        var sender = getMemberOrThrow(new ChatMemberId(member.getId().chatId(), senderId));
+
+        if(sender.getPermissions().contains(Permission.CHANGE_PERMISSIONS) &&
+                sender.getPermissions().containsAll(member.getPermissions())) {
             return chatMemberRepository.save(member);
         } else {
             throw new ApiException(HttpStatus.BAD_REQUEST,
                     String.format(
                             "user with id: %s is not allowed change permissions of user with id: %s",
-                            id.userId(),
+                            sender.getId().userId(),
                             member.getId().userId()));
         }
     }

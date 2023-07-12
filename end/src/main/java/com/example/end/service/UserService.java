@@ -1,18 +1,21 @@
 package com.example.end.service;
 
 import com.example.end.domain.dto.*;
+import org.bson.types.ObjectId;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
+import java.util.Set;
 
 public interface UserService {
     public AuthResponse login(AuthRequest request);
     public void register(CreateUserRequest request);
     public void confirmRegistration(String token);
-    public boolean userExists(String username);
-    public Path updateProfileImage(String username, MultipartFile file);
-    public LoggedInUser updateUserInfo(String username, UpdateUserRequest request);
-    public void changePassword(String username, UpdatePasswordRequest request);
-    public void changeEmail(String username, String email);
+    public Path updateProfileImage(String userId, MultipartFile file);
+    public LoggedInUser updateUserInfo(String userId, UpdateUserRequest request);
+    public LoggedInUser addContacts(String userId, Set<ObjectId> add);
+    public LoggedInUser removeContacts(String userId, Set<ObjectId> remove);
+    public void changePassword(String userId, UpdatePasswordRequest request);
+    public void changeEmail(String userId, String email);
     public void confirmEmailChange(String token);
 }

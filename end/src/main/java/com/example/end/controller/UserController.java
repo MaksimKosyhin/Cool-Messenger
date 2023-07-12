@@ -41,29 +41,29 @@ public class UserController {
 
     @PutMapping
     public ResponseEntity<?> updateUserInfo(@RequestBody @Valid UpdateUserRequest request) {
-        var username = SecurityContextHolder.getContext().getAuthentication().getName();
-        var updated = userService.updateUserInfo(username, request);
+        var id = SecurityContextHolder.getContext().getAuthentication().getName();
+        var updated = userService.updateUserInfo(id, request);
         return ResponseEntity.status(HttpStatus.OK).body(updated);
     }
 
     @PutMapping("image")
     public ResponseEntity<?> updateProfileImage(@RequestParam("file") MultipartFile file) {
-        var username = SecurityContextHolder.getContext().getAuthentication().getName();
-        var imagePath = userService.updateProfileImage(username, file);
+        var id = SecurityContextHolder.getContext().getAuthentication().getName();
+        var imagePath = userService.updateProfileImage(id, file);
         return ResponseEntity.status(HttpStatus.OK).body(imagePath);
     }
 
     @PutMapping("password")
     public ResponseEntity<?> changePassword(@RequestBody @Valid UpdatePasswordRequest request) {
-        var username = SecurityContextHolder.getContext().getAuthentication().getName();
-        userService.changePassword(username, request);
+        var id = SecurityContextHolder.getContext().getAuthentication().getName();
+        userService.changePassword(id, request);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
     @PutMapping("email")
     public ResponseEntity<?> changeEmail(@RequestBody String email) {
-        var username = SecurityContextHolder.getContext().getAuthentication().getName();
-        userService.changeEmail(username, email);
+        var id = SecurityContextHolder.getContext().getAuthentication().getName();
+        userService.changeEmail(id, email);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 

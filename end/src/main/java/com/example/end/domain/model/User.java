@@ -36,6 +36,8 @@ public class User implements UserDetails {
 
     private Set<Remainder> remainders;
 
+    private Set<ObjectId> contacts;
+
     private Map<String, Set<ObjectId>> folders;
 
     @Override
@@ -79,5 +81,4 @@ public class User implements UserDetails {
         private LocalDateTime notifyAt;
         private String message;
     }
-
 }

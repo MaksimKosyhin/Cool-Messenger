@@ -2,6 +2,7 @@ package com.example.end.repository;
 
 import com.example.end.config.DbConfig;
 import com.example.end.domain.dto.Contact;
+import com.example.end.domain.dto.PersonalContact;
 import com.example.end.domain.model.Chat;
 import com.mongodb.BasicDBObject;
 import com.mongodb.client.MongoDatabase;
@@ -28,7 +29,7 @@ public class ContactsDaoImpl implements ContactsDao {
     }
 
     @Override
-    public List<Contact> getContacts(String username) {
+    public List<PersonalContact> getContacts(String username) {
         var matchUser = new BasicDBObject("$match", new BasicDBObject("username", username));
 
         var lookupChats = new BasicDBObject("$lookup",
@@ -43,6 +44,8 @@ public class ContactsDaoImpl implements ContactsDao {
         var unwindChat = new BasicDBObject("$unwind", new BasicDBObject("path", "$chat"));
 
         var lookupChatMembers = lookupChatMembers();
+
+        var lookupPermissions = lookupPermission();
 
         var lookupUsers = new BasicDBObject("$lookup",
                 new BasicDBObject(Map.of(
@@ -66,13 +69,14 @@ public class ContactsDaoImpl implements ContactsDao {
                 projectChat,
                 unwindChat,
                 lookupChatMembers,
+                lookupPermissions,
                 lookupUsers,
                 unwindUser,
                 projectContacts);
 
         var users = db.getCollection("users");
-        List<Contact> result = new LinkedList<>();
-        users.aggregate(stages, Contact.class).forEach(result::add);
+        List<PersonalContact> result = new LinkedList<>();
+        users.aggregate(stages, PersonalContact.class).forEach(result::add);
         return result;
     }
 
@@ -100,6 +104,28 @@ public class ContactsDaoImpl implements ContactsDao {
         return lookup;
     }
 
+    private BasicDBObject lookupPermission() {
+        var let = new BasicDBObject(Map.of(
+                "userId", "$_id",
+                "chatId", "$chat._id"));
+
+        var match = new BasicDBObject("$match",
+                new BasicDBObject("$expr",
+                        new BasicDBObject("$and", List.of(
+                                new BasicDBObject("$eq", List.of("$$chatId", "$_id.chatId")),
+                                new BasicDBObject("$eq", List.of("$$userId", "$_id.userId"))))));
+
+
+        var lookup = new BasicDBObject("$lookup", new BasicDBObject(Map.of(
+                "from", "chat-members",
+                "let", let,
+                "pipeline", Collections.singletonList(match),
+                "as", "permissions"
+        )));
+
+        return lookup;
+    }
+
     private BasicDBObject projectContacts() {
         var displayName = new BasicDBObject("$ifNull", List.of(
                 "$user.displayName",
@@ -117,12 +143,18 @@ public class ContactsDaoImpl implements ContactsDao {
                 "$user.info",
                 "$chat.info"));
 
+        var permissions = new BasicDBObject("$getField",
+                new BasicDBObject(Map.of(
+                        "input", new BasicDBObject("$arrayElemAt", List.of("$permissions", 0)),
+                        "field", "permissions")));
+
         var projectContacts = new BasicDBObject("$project", Map.of(
                 "id", "$chat._id",
                 "displayName", displayName,
                 "identifier", identifier,
                 "imageUrl", imageUrl,
-                "info", info
+                "info", info,
+                "permissions", permissions
         ));
 
         return projectContacts;

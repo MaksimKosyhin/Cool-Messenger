@@ -1,6 +1,7 @@
 package com.example.end.repository;
 
 import com.example.end.domain.dto.Contact;
+import com.example.end.domain.dto.PersonalContact;
 import com.example.end.domain.mapper.ChatViewMapper;
 import com.example.end.domain.mapper.UserViewMapper;
 import com.example.end.domain.model.Chat;
@@ -64,7 +65,7 @@ public class UserRepositoryTest {
 
         contactsDao.addContact(user.getUsername(), chat.getId());
 
-        user = userRepository.findById(user.getId().toString()).get();
+        user = userRepository.findById(user.getId()).get();
 
         assertThat(user.getFolders().get("all")).contains(chat.getId());
     }
@@ -81,7 +82,7 @@ public class UserRepositoryTest {
         user = userRepository.save(user);
 
         contactsDao.removeContact(user.getUsername(), chat.getId());
-        user = userRepository.findById(user.getId().toString()).get();
+        user = userRepository.findById(user.getId()).get();
 
         assertThat(user.getFolders().get("all").contains(chat.getId())).isFalse();
     }
@@ -123,27 +124,31 @@ public class UserRepositoryTest {
 
         ChatMember m1 = new ChatMember();
         m1.setId(new ChatMember.ChatMemberId(dialogue.getId(), user1.getId()));
+        m1.setPermissions(ChatMember.Permission.getAll());
         m1 = chatMemberRepository.save(m1);
 
         ChatMember m2 = new ChatMember();
         m2.setId(new ChatMember.ChatMemberId(dialogue.getId(), user2.getId()));
+        m2.setPermissions(ChatMember.Permission.getAll());
         m2 = chatMemberRepository.save(m2);
 
         user1.getFolders().put("all", Set.of(chat.getId(), dialogue.getId()));
         user1 = userRepository.save(user1);
 
-        List<Contact> contacts = contactsDao.getContacts(user1.getUsername());
+        List<PersonalContact> contacts = contactsDao.getContacts(user1.getUsername());
 
-        Contact dialogueView = new Contact(
+        PersonalContact dialogueContact = new PersonalContact(
                 dialogue.getId(),
                 user2.getDisplayName(),
                 user2.getUsername(),
                 user2.getImageUrl(),
-                user2.getInfo());
+                user2.getInfo(),
+                m1.getPermissions()
+        );
 
         assertThat(contacts).containsExactlyInAnyOrder(
-                dialogueView,
-                chatViewMapper.toContact(chat));
+                chatViewMapper.toPersonalContact(chat, null),
+                dialogueContact);
     }
 
     public Chat getValidChat() {

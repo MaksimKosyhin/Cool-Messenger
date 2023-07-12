@@ -5,6 +5,8 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.Set;
+
 @Document(collection = "chats")
 @Data
 public class Chat {
@@ -24,6 +26,8 @@ public class Chat {
     private boolean exclusive;
 
     private boolean closed;
+
+    private Set<ChatMember.Permission> defaultPermissions;
 
     public enum ChatType {
         GROUP, CHANNEL, DIALOGUE;

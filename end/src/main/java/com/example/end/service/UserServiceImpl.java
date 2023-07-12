@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -36,8 +37,8 @@ public class UserServiceImpl implements UserService{
     private final UserEditMapper userEditMapper;
 
     @Override
-    public Path updateProfileImage(String username, MultipartFile file) {
-        var user = getUserOrThrow(username);
+    public Path updateProfileImage(String userId, MultipartFile file) {
+        var user = getUserOrThrow(userId);
 
         if(file.isEmpty() && user.getImageUrl() != null) {
             fileService.delete(Paths.get(user.getImageUrl()));
@@ -60,8 +61,8 @@ public class UserServiceImpl implements UserService{
     }
 
     @Override
-    public LoggedInUser updateUserInfo(String username, UpdateUserRequest request) {
-        var user = getUserOrThrow(username);
+    public LoggedInUser updateUserInfo(String userId, UpdateUserRequest request) {
+        var user = getUserOrThrow(userId);
 
         if(!isReferencesValid(request, user)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "invalid contact references");
@@ -72,19 +73,37 @@ public class UserServiceImpl implements UserService{
         return userViewMapper.toLoggedInUser(user);
     }
 
-    private User getUserOrThrow(String username) {
-        return userRepository.findByUsername(username)
+    @Override
+    public LoggedInUser addContacts(String userId, Set<ObjectId> add) {
+        var user = getUserOrThrow(userId);
+        user.getContacts().addAll(add);
+        user = userRepository.save(user);
+        return userViewMapper.toLoggedInUser(user);
+    }
+
+    @Override
+    public LoggedInUser removeContacts(String userId, Set<ObjectId> remove) {
+        var user = getUserOrThrow(userId);
+
+        var contacts = user.getContacts();
+        contacts.removeAll(remove);
+
+        var folders = user.getFolders();
+        folders.values().forEach(folder -> folder.retainAll(contacts));
+
+        user = userRepository.save(user);
+        return userViewMapper.toLoggedInUser(user);
+    }
+
+    private User getUserOrThrow(String userId) {
+        return userRepository.findById(new ObjectId(userId))
                 .orElseThrow(() -> new ApiException(
                         HttpStatus.NOT_FOUND,
                         String.format("user with username: %s doesn't exist")));
     }
 
     private boolean isReferencesValid(UpdateUserRequest request, User user) {
-        final var all = request.folders().get("all");
-
-        if(!all.equals(user.getFolders().get("all"))) {
-            return false;
-        }
+        final var all = user.getContacts();
 
         var foldersValid =  request
                 .folders()
@@ -105,9 +124,9 @@ public class UserServiceImpl implements UserService{
     }
 
     @Override
-    public void changePassword(String username, UpdatePasswordRequest request) {
+    public void changePassword(String userId, UpdatePasswordRequest request) {
         var authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(username, request.oldPassword())
+                new UsernamePasswordAuthenticationToken(userId, request.oldPassword())
         );
 
         var user = (User) authentication.getPrincipal();
@@ -140,6 +159,13 @@ public class UserServiceImpl implements UserService{
         }
     }
 
+    private User getUserByUsernameOrThrow(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND,
+                        String.format("user with username: %s isn't found")));
+    }
+
     @Override
     public AuthResponse login(AuthRequest request) {
         var authentication = authenticationManager.authenticate(
@@ -149,11 +175,11 @@ public class UserServiceImpl implements UserService{
         var user = (User) authentication.getPrincipal();
 
         var loggedInUser = userViewMapper.toLoggedInUser(user);
-        var token = getAuthToken(user.getUsername());
+        var token = getAuthToken(user.getId());
         return new AuthResponse(loggedInUser, token);
     }
 
-    private String getAuthToken(String username) {
+    private String getAuthToken(ObjectId userId) {
         var now = Instant.now();
         var expiry = 60 * 60 * 24 * 7;
 
@@ -162,16 +188,15 @@ public class UserServiceImpl implements UserService{
                         .issuer("example.com")
                         .issuedAt(now)
                         .expiresAt(now.plusSeconds(expiry))
-                        .subject(username)
+                        .subject(userId.toHexString())
                         .build();
 
         return this.jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
     }
 
     @Override
-    public void changeEmail(String username, String email) {
-        var userId = getUserOrThrow(username).getId();
-        var token = getConfirmationToken(userId.toString(), email);
+    public void changeEmail(String userId, String email) {
+        var token = getConfirmationToken(userId, email);
         sendEmailConfirmation(email, token);
     }
 
@@ -210,11 +235,6 @@ public class UserServiceImpl implements UserService{
         var user = userRepository.findById(new ObjectId(jwt.getSubject())).get();
         user.setEnabled(true);
         userRepository.save(user);
-    }
-
-    @Override
-    public boolean userExists(String username) {
-        return userRepository.existsByUsername(username);
     }
 
     @Override

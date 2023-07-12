@@ -7,6 +7,7 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import lombok.RequiredArgsConstructor;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -71,8 +72,9 @@ public class SecurityConfig {
   public UserDetailsService userDetailsService(UserRepository userRepository) {
     return identifier -> {
       User user;
-
-      if(userRepository.existsByUsername(identifier)) {
+      if(userRepository.existsById(new ObjectId(identifier))) {
+        user = userRepository.findById(new ObjectId(identifier)).get();
+      } else if(userRepository.existsByUsername(identifier)) {
         user = userRepository.findByUsername(identifier).get();
       } else if(userRepository.existsByEmail(identifier)) {
         user = userRepository.findByEmail(identifier).get();

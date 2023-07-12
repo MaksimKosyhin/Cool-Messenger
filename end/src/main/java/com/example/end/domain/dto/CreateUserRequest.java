@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 
 public record CreateUserRequest(
         String displayName,
-        @NotBlank(message = "password must not be blank")
+        @NotBlank(message = "username must not be blank")
         @NotEmail
         String username,
         @Email(message = "must be valid email")

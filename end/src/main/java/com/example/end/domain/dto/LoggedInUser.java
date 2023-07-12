@@ -12,6 +12,7 @@ public record LoggedInUser(
         String info,
         String imageUrl,
         Set<User.Remainder> remainders,
+        Set<ObjectId> contacts,
         Map<String, Set<ObjectId>> folders
 ) {
 }

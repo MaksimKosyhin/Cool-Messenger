@@ -2,10 +2,12 @@ package com.example.end.service;
 
 import com.example.end.domain.dto.Contact;
 import com.example.end.domain.dto.CreateChatRequest;
+import com.example.end.domain.dto.PersonalContact;
 import com.example.end.domain.dto.UpdateChatRequest;
 import com.example.end.domain.mapper.ChatEditMapper;
 import com.example.end.domain.mapper.ChatViewMapper;
 import com.example.end.domain.model.Chat;
+import com.example.end.domain.model.ChatMember;
 import com.example.end.exception.ApiException;
 import com.example.end.repository.ChatRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
+import java.util.Set;
 
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService{
@@ -24,22 +28,16 @@ public class ChatServiceImpl implements ChatService{
     private final ChatEditMapper chatEditMapper;
 
     @Override
-    public Contact createChat(CreateChatRequest request) {
+    public PersonalContact createChat(CreateChatRequest request) {
         var chat = chatEditMapper.create(request);
         chat = chatRepository.save(chat);
-        return chatViewMapper.toContact(chat);
+        return chatViewMapper.toPersonalContact(chat, new HashSet<>());
     }
 
     @Override
-    public boolean chatExists(String identifier) {
-        return chatRepository.existsByIdentifier(identifier);
-    }
-
-    @Override
-    public Contact getChat(ObjectId chatId) {
-        Chat chat = getChatOrThrow(chatId);
-
-        return chatViewMapper.toContact(chat);
+    public Set<ChatMember.Permission> getDefaultPermissions(ObjectId chatId) {
+        var chat = getChatOrThrow(chatId);
+        return chat.getDefaultPermissions();
     }
 
     @Override
