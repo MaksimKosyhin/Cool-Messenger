@@ -73,6 +73,11 @@ public class ChatServiceImpl implements ChatService{
         return fullPath;
     }
 
+    @Override
+    public boolean existsByIdentifier(String identifier) {
+        return chatRepository.existsByIdentifier(identifier);
+    }
+
     private Chat getChatOrThrow(ObjectId chatId) {
         var chat = chatRepository.findById(chatId)
                 .orElseThrow(() -> new ApiException(

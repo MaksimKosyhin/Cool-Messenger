@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 
 public record UpdateUserRequest(
+        String username,
         String displayName,
         String info,
         Map<String, Set<ObjectId>> folders,

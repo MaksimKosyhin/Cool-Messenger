@@ -15,6 +15,7 @@ public interface UserService {
     public LoggedInUser updateUserInfo(String userId, UpdateUserRequest request);
     public LoggedInUser addContacts(String userId, Set<ObjectId> add);
     public LoggedInUser removeContacts(String userId, Set<ObjectId> remove);
+    public boolean existsByUsername(String username);
     public void changePassword(String userId, UpdatePasswordRequest request);
     public void changeEmail(String userId, String email);
     public void confirmEmailChange(String token);

@@ -73,35 +73,6 @@ public class UserServiceImpl implements UserService{
         return userViewMapper.toLoggedInUser(user);
     }
 
-    @Override
-    public LoggedInUser addContacts(String userId, Set<ObjectId> add) {
-        var user = getUserOrThrow(userId);
-        user.getContacts().addAll(add);
-        user = userRepository.save(user);
-        return userViewMapper.toLoggedInUser(user);
-    }
-
-    @Override
-    public LoggedInUser removeContacts(String userId, Set<ObjectId> remove) {
-        var user = getUserOrThrow(userId);
-
-        var contacts = user.getContacts();
-        contacts.removeAll(remove);
-
-        var folders = user.getFolders();
-        folders.values().forEach(folder -> folder.retainAll(contacts));
-
-        user = userRepository.save(user);
-        return userViewMapper.toLoggedInUser(user);
-    }
-
-    private User getUserOrThrow(String userId) {
-        return userRepository.findById(new ObjectId(userId))
-                .orElseThrow(() -> new ApiException(
-                        HttpStatus.NOT_FOUND,
-                        String.format("user with username: %s doesn't exist")));
-    }
-
     private boolean isReferencesValid(UpdateUserRequest request, User user) {
         final var all = user.getContacts();
 
@@ -124,6 +95,40 @@ public class UserServiceImpl implements UserService{
     }
 
     @Override
+    public LoggedInUser addContacts(String userId, Set<ObjectId> add) {
+        var user = getUserOrThrow(userId);
+        user.getContacts().addAll(add);
+        user = userRepository.save(user);
+        return userViewMapper.toLoggedInUser(user);
+    }
+
+    @Override
+    public LoggedInUser removeContacts(String userId, Set<ObjectId> remove) {
+        var user = getUserOrThrow(userId);
+
+        var contacts = user.getContacts();
+        contacts.removeAll(remove);
+
+        var folders = user.getFolders();
+        folders.values().forEach(folder -> folder.retainAll(contacts));
+
+        user = userRepository.save(user);
+        return userViewMapper.toLoggedInUser(user);
+    }
+
+    @Override
+    public boolean existsByUsername(String username) {
+        return userRepository.existsByUsername(username);
+    }
+
+    private User getUserOrThrow(String userId) {
+        return userRepository.findById(new ObjectId(userId))
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND,
+                        String.format("user with id: %s doesn't exist")));
+    }
+
+    @Override
     public void changePassword(String userId, UpdatePasswordRequest request) {
         var authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(userId, request.oldPassword())
@@ -136,7 +141,11 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public void register(CreateUserRequest request) {
-        throwIfUserExists(request);
+        if(userRepository.existsByEmail(request.email())) {
+            throw new ApiException(
+                    HttpStatus.CONFLICT,
+                    "user with this email already exists");
+        }
 
         var user = userEditMapper.create(request);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
@@ -144,19 +153,6 @@ public class UserServiceImpl implements UserService{
 
         var token = getConfirmationToken(user.getId().toString(), user.getEmail());
         sendEmailConfirmation(user.getEmail(), token);
-    }
-
-    //todo: ?put into controller
-    private void throwIfUserExists(CreateUserRequest request) {
-        if(userRepository.existsByUsername(request.username())) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT,
-                    "user with this username already exists");
-        } else if(userRepository.existsByEmail(request.email())) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT,
-                    "user with this email already exists");
-        }
     }
 
     private User getUserByUsernameOrThrow(String username) {

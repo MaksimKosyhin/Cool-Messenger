@@ -16,6 +16,8 @@ public class Message {
 
     private ObjectId chatId;
 
+    private ObjectId userId;
+
     private String text;
 
     private String fileUrl;
@@ -25,6 +27,4 @@ public class Message {
     private boolean isRead;
 
     private boolean isEdited;
-
-    private String senderId;
 }

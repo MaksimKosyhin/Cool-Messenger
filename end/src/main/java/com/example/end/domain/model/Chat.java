@@ -23,10 +23,6 @@ public class Chat {
 
     private ChatType type;
 
-    private boolean exclusive;
-
-    private boolean closed;
-
     private Set<ChatMember.Permission> defaultPermissions;
 
     public enum ChatType {

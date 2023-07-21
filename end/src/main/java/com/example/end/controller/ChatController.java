@@ -14,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Set;
 
@@ -41,13 +42,33 @@ public class ChatController {
     }
 
     @PutMapping("{chatId}")
-    public ResponseEntity<?> updateChatInfo(@PathVariable ObjectId chatId, @RequestBody UpdateChatRequest request) {
+    public ResponseEntity<?> updateChatInfo(
+            @PathVariable ObjectId chatId,
+            @RequestBody UpdateChatRequest request) {
+
         var userId = SecurityContextHolder.getContext().getAuthentication().getName();
         var id = new ChatMemberId(chatId, new ObjectId(userId));
 
         if(chatMemberService.hasPermission(id, Permission.UPDATE_CHAT_INFO)) {
             var contact = chatService.updateChatInfo(chatId, request);
             return  ResponseEntity.status(HttpStatus.OK).body(contact);
+        } else {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("not allowed to update chat information");
+        }
+    }
+
+    @PutMapping("{chatId}/image")
+    public ResponseEntity<?> updateChatImage(
+            @PathVariable ObjectId chatId,
+            @RequestParam("file") MultipartFile file) {
+
+        var userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        var id = new ChatMemberId(chatId, new ObjectId(userId));
+
+        if(chatMemberService.hasPermission(id, Permission.UPDATE_CHAT_INFO)) {
+            var path = chatService.updateChatImage(chatId, file);
+            return ResponseEntity.status(HttpStatus.OK).body(path);
         } else {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("not allowed to update chat information");
@@ -71,6 +92,7 @@ public class ChatController {
     }
 
     @PutMapping("{chatId}")
+    @Transactional
     public ResponseEntity<?> joinChat(@PathVariable ObjectId chatId) {
         var userId = SecurityContextHolder.getContext().getAuthentication().getName();
         var permissions = chatService.getDefaultPermissions(chatId);
@@ -79,11 +101,13 @@ public class ChatController {
         member.setId(new ChatMemberId(chatId, new ObjectId(userId)));
         member.setPermissions(permissions);
 
+        userService.addContacts(userId, Set.of(chatId));
+
         var result = chatMemberService.addMember(member);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
-    @PutMapping("{chatId}/{receiverId}/permission")
+    @PutMapping("{chatId}/{receiverId}")
     public ResponseEntity<?> changeUserPermissions(
             @PathVariable ObjectId chatId,
             @PathVariable ObjectId receiverId,

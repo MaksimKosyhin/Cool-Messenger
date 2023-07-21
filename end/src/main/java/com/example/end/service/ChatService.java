@@ -16,5 +16,6 @@ public interface ChatService {
     public Set<ChatMember.Permission> getDefaultPermissions(ObjectId chatId);
     public Contact updateChatInfo(ObjectId chatId, UpdateChatRequest request);
     public Path updateChatImage(ObjectId chatId, MultipartFile file);
+    public boolean existsByIdentifier(String identifier);
     public void deleteChat(ObjectId chatId);
 }
