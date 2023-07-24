@@ -41,10 +41,23 @@ public class ChatController {
         return ResponseEntity.status(HttpStatus.CREATED).body(contact);
     }
 
+    @GetMapping("{chatId}/{userId}")
+    public ResponseEntity getUserPermissions(@PathVariable ObjectId chatId,
+                                             @PathVariable ObjectId userId) {
+        var requesterId = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        if(chatMemberService.hasPermission(new ChatMemberId(chatId, new ObjectId(requesterId)), Permission.CHANGE_PERMISSIONS)) {
+            var permissions = chatMemberService.getPermissions(new ChatMemberId(chatId, userId));
+            return ResponseEntity.status(HttpStatus.OK).body(permissions);
+        } else {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("not allowed to see user's permissions");
+        }
+    }
+
     @PutMapping("{chatId}")
-    public ResponseEntity<?> updateChatInfo(
-            @PathVariable ObjectId chatId,
-            @RequestBody UpdateChatRequest request) {
+    public ResponseEntity<?> updateChatInfo(@PathVariable ObjectId chatId,
+                                            @RequestBody UpdateChatRequest request) {
 
         var userId = SecurityContextHolder.getContext().getAuthentication().getName();
         var id = new ChatMemberId(chatId, new ObjectId(userId));
@@ -59,9 +72,8 @@ public class ChatController {
     }
 
     @PutMapping("{chatId}/image")
-    public ResponseEntity<?> updateChatImage(
-            @PathVariable ObjectId chatId,
-            @RequestParam("file") MultipartFile file) {
+    public ResponseEntity<?> updateChatImage(@PathVariable ObjectId chatId,
+                                             @RequestParam("file") MultipartFile file) {
 
         var userId = SecurityContextHolder.getContext().getAuthentication().getName();
         var id = new ChatMemberId(chatId, new ObjectId(userId));
@@ -91,7 +103,7 @@ public class ChatController {
         }
     }
 
-    @PutMapping("{chatId}")
+    @PutMapping("{chatId}/join")
     @Transactional
     public ResponseEntity<?> joinChat(@PathVariable ObjectId chatId) {
         var userId = SecurityContextHolder.getContext().getAuthentication().getName();

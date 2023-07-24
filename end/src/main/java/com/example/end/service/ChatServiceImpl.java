@@ -13,6 +13,7 @@ import com.example.end.repository.ChatRepository;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
@@ -20,6 +21,7 @@ import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
 
+@Service
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService{
     private final ChatRepository chatRepository;

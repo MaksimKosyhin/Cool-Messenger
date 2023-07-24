@@ -6,10 +6,14 @@ import com.example.end.repository.ChatMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
+import java.util.Set;
 
 import static com.example.end.domain.model.ChatMember.ChatMemberId;
 import static com.example.end.domain.model.ChatMember.Permission;
 
+@Service
 @RequiredArgsConstructor
 public class ChatMemberServiceImpl implements ChatMemberService{
 
@@ -32,6 +36,11 @@ public class ChatMemberServiceImpl implements ChatMemberService{
     @Override
     public ChatMember addMember(ChatMember member) {
         return chatMemberRepository.save(member);
+    }
+
+    @Override
+    public Set<Permission> getPermissions(ChatMemberId id) {
+        return getMemberOrThrow(id).getPermissions();
     }
 
     @Override

@@ -1,15 +1,19 @@
 package com.example.end.repository;
 
 import com.example.end.config.DbConfig;
+import com.example.end.domain.dto.ChatMembersQuery;
 import com.example.end.domain.dto.Contact;
+import com.example.end.domain.dto.ContactQuery;
 import com.example.end.domain.dto.PersonalContact;
 import com.example.end.domain.model.Chat;
+import com.example.end.domain.model.User;
+import com.example.end.exception.ApiException;
 import com.mongodb.BasicDBObject;
 import com.mongodb.client.MongoDatabase;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collections;
@@ -18,24 +22,24 @@ import java.util.List;
 import java.util.Map;
 
 @Repository
-public class ContactsDaoImpl implements ContactsDao {
+public class ContactsSearchDaoImpl implements ContactsSearchDao {
 
     private final MongoDatabase db;
 
     @Autowired
-    public ContactsDaoImpl(DbConfig config) {
+    public ContactsSearchDaoImpl(DbConfig config) {
         var client = config.mongoClient();
         this.db = client.getDatabase("cool-chat");
     }
 
     @Override
-    public List<PersonalContact> getContacts(String username) {
+    public List<PersonalContact> getPersonalContacts(String username) {
         var matchUser = new BasicDBObject("$match", new BasicDBObject("username", username));
 
         var lookupChats = new BasicDBObject("$lookup",
                 new BasicDBObject(Map.of(
                         "from", "chats",
-                        "localField", "folders.all",
+                        "localField", "contacts",
                         "foreignField", "_id",
                         "as", "chat")));
 
@@ -45,14 +49,14 @@ public class ContactsDaoImpl implements ContactsDao {
 
         var lookupChatMembers = lookupChatMembers();
 
-        var lookupPermissions = lookupPermission();
-
         var lookupUsers = new BasicDBObject("$lookup",
                 new BasicDBObject(Map.of(
                         "from", "users",
                         "localField", "members._id.userId",
                         "foreignField", "_id",
                         "as", "user")));
+
+        var lookupPermissions = lookupPermission();
 
         var unwindUser = new BasicDBObject("$unwind",
                 new BasicDBObject(Map.of(
@@ -69,8 +73,8 @@ public class ContactsDaoImpl implements ContactsDao {
                 projectChat,
                 unwindChat,
                 lookupChatMembers,
-                lookupPermissions,
                 lookupUsers,
+                lookupPermissions,
                 unwindUser,
                 projectContacts);
 
@@ -160,47 +164,8 @@ public class ContactsDaoImpl implements ContactsDao {
         return projectContacts;
     }
 
-    //todo: i need this?
-    @Override
-    public boolean contactExists(ObjectId chatId) {
-        var chats = db.getCollection("chats");
-        return chats.countDocuments(new BasicDBObject("_id", chatId)) == 1;
-    }
-
-
-    @Override
-    public boolean contactExists(String identifier) {
-        var chats = db.getCollection("chats");
-        var chatExists = chats.countDocuments(new BasicDBObject("identifier", identifier)) == 1;
-
-        var users = db.getCollection("users");
-        var userExists = chats.countDocuments(new BasicDBObject("username", identifier)) == 1;
-
-        return userExists || chatExists;
-    }
-
-    //todo: save chat members
-    @Override
-    public boolean addContact(String username, ObjectId chatId) {
-        var users = db.getCollection("users");
-        var result =  users.updateOne(
-                new BasicDBObject("username", username),
-                new BasicDBObject("$push", new BasicDBObject("folders.all", chatId)));
-        return result.wasAcknowledged();
-    }
-
-    @Override
-    public boolean removeContact(String username, ObjectId chatId) {
-        var users = db.getCollection("users");
-        var result =  users.updateOne(
-                new BasicDBObject("username", username),
-                new BasicDBObject("$pull", new BasicDBObject("folders.all", chatId)));
-        return result.wasAcknowledged();
-    }
-
     @Override
     public List<Contact> getChatMembers(ObjectId chatId, Pageable pageable) {
-        Page a;
         var matchChat = new BasicDBObject("$match", new BasicDBObject("_id.chatId", chatId));
 
         var skip = new BasicDBObject("$skip", pageable.getOffset());
@@ -238,6 +203,91 @@ public class ContactsDaoImpl implements ContactsDao {
         var chatMembers = db.getCollection("chat-members");
         List<Contact> result = new LinkedList<>();
         chatMembers.aggregate(stages, Contact.class).forEach(result::add);
+        return result;
+    }
+
+    @Override
+    public List<Contact> searchChatMembers(ChatMembersQuery query, Pageable pageable) {
+        var matchChat = new BasicDBObject("$match", new BasicDBObject("_id.chatId", query.chatId()));
+
+        var lookupUsers = new BasicDBObject("$lookup",
+                new BasicDBObject(Map.of(
+                        "from", "users",
+                        "localField", "_id.userId",
+                        "foreignField", "_id",
+                        "as", "member"
+                )));
+
+        var replaceRoot = new BasicDBObject("$replaceRoot",
+                new BasicDBObject("$arrayElemAt", List.of("$member", 0)));
+
+        var matchField = new BasicDBObject("$match",
+                new BasicDBObject(query.field(),
+                        new BasicDBObject(Map.of(
+                                "$regex", query.value(),
+                                "$options", "i"
+                        ))));
+
+        var skip = new BasicDBObject("$skip", pageable.getOffset());
+
+        var limit = new BasicDBObject("$limit", pageable.getPageSize());
+
+        var stages = List.of(
+                matchChat,
+                lookupUsers,
+                replaceRoot,
+                matchField,
+                skip,
+                limit
+        );
+
+        var chatMembers = db.getCollection("chat-members");
+        List<Contact> result = new LinkedList<>();
+        chatMembers.aggregate(stages, Contact.class).forEach(result::add);
+        return result;
+    }
+
+    @Override
+    public List<Contact> searchContacts(ContactQuery query, Pageable pageable) {
+        var matchField = new BasicDBObject("$match",
+                new BasicDBObject(query.field(),
+                        new BasicDBObject(Map.of(
+                                "$regex", query.value(),
+                                "$options", "i"
+                        ))));
+
+        var skip = new BasicDBObject("$skip", pageable.getOffset());
+
+        var limit = new BasicDBObject("$limit", pageable.getPageSize());
+
+        var project = new BasicDBObject("$project", Map.of(
+                "id", 1,
+                "title", 1,
+                "identifier", 1,
+                "imageUrl", 1,
+                "info", 1
+        ));
+
+        var stages = List.of(
+                matchField,
+                skip,
+                limit,
+                project
+        );
+
+        String collectionName;
+
+        if (query.source() == User.class) {
+            collectionName = "users";
+        } else if(query.source() == Chat.class) {
+            collectionName = "chats";
+        } else {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid request");
+        }
+
+        var contacts = db.getCollection(collectionName);
+        List<Contact> result = new LinkedList<>();
+        contacts.aggregate(stages, Contact.class).forEach(result::add);
         return result;
     }
 }

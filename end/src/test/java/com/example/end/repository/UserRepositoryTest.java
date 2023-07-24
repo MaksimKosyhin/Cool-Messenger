@@ -31,7 +31,7 @@ public class UserRepositoryTest {
     @Autowired
     private ChatMemberRepository chatMemberRepository;
     @Autowired
-    public ContactsDao contactsDao;
+    public ContactsSearchDao contactsSearchDao;
 
     @Autowired
     private UserViewMapper userViewMapper;
@@ -52,39 +52,7 @@ public class UserRepositoryTest {
         chat.setTitle(faker.name().title());
         chat = chatRepository.save(chat);
 
-        assertThat(contactsDao.contactExists(chat.getId())).isTrue();
-    }
-
-    @Test
-    public void addContact() {
-        User user = getValidUser();
-
-        Chat chat = new Chat();
-        chat.setTitle(faker.name().title());
-        chat = chatRepository.save(chat);
-
-        contactsDao.addContact(user.getUsername(), chat.getId());
-
-        user = userRepository.findById(user.getId()).get();
-
-        assertThat(user.getFolders().get("all")).contains(chat.getId());
-    }
-
-    @Test
-    public void removeContact() {
-        User user = getValidUser();
-
-        Chat chat = new Chat();
-        chat.setTitle(faker.name().title());
-        chat = chatRepository.save(chat);
-
-        user.getFolders().get("all").add(chat.getId());
-        user = userRepository.save(user);
-
-        contactsDao.removeContact(user.getUsername(), chat.getId());
-        user = userRepository.findById(user.getId()).get();
-
-        assertThat(user.getFolders().get("all").contains(chat.getId())).isFalse();
+        assertThat(contactsSearchDao.contactExists(chat.getId())).isTrue();
     }
 
     @Test
@@ -103,7 +71,7 @@ public class UserRepositoryTest {
         m2.setId(new ChatMember.ChatMemberId(chat.getId(), user2.getId()));
         chatMemberRepository.save(m2);
 
-        List<Contact> contacts = contactsDao.getChatMembers(chat.getId(), PageRequest.of(0, 2));
+        List<Contact> contacts = contactsSearchDao.getChatMembers(chat.getId(), PageRequest.of(0, 2));
 
         assertThat(contacts).isEqualTo(List.of(
                 userViewMapper.toContact(user1),
@@ -135,7 +103,7 @@ public class UserRepositoryTest {
         user1.getFolders().put("all", Set.of(chat.getId(), dialogue.getId()));
         user1 = userRepository.save(user1);
 
-        List<PersonalContact> contacts = contactsDao.getContacts(user1.getUsername());
+        List<PersonalContact> contacts = contactsSearchDao.getPersonalContacts(user1.getUsername());
 
         PersonalContact dialogueContact = new PersonalContact(
                 dialogue.getId(),

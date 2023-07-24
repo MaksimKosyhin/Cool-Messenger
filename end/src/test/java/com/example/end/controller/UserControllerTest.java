@@ -345,6 +345,7 @@ public class UserControllerTest {
         Set<ObjectId> folders = Set.of(user2.getId());
 
         UpdateUserRequest request = new UpdateUserRequest(
+                faker.name().username(),
                 faker.name().name(),
                 faker.lorem().sentence(),
                 Map.of(),
@@ -384,6 +385,7 @@ public class UserControllerTest {
         remainder.setNotifyAt(LocalDateTime.now());
 
         UpdateUserRequest request = new UpdateUserRequest(
+                faker.name().username(),
                 faker.name().name(),
                 faker.lorem().sentence(),
                 Map.of(),

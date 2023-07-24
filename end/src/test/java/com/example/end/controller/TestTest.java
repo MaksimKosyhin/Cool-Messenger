@@ -49,17 +49,24 @@ public class TestTest {
 
         ChatMember m1 = new ChatMember();
         m1.setId(new ChatMember.ChatMemberId(dialogue.getId(), user1.getId()));
+        m1.setPermissions(ChatMember.Permission.getAll());
         chatMemberRepository.save(m1);
 
         ChatMember m2 = new ChatMember();
         m2.setId(new ChatMember.ChatMemberId(dialogue.getId(), user2.getId()));
+        m2.setPermissions(ChatMember.Permission.getAll());
         chatMemberRepository.save(m2);
 
         Chat chat = new Chat();
         chat.setTitle(faker.lorem().word());
         chat = chatRepository.save(chat);
 
-        user1.getFolders().put("all", Set.of(dialogue.getId(), chat.getId()));
+        ChatMember m3 = new ChatMember();
+        m3.setId(new ChatMember.ChatMemberId(chat.getId(), user2.getId()));
+        m3.setPermissions(Set.of(ChatMember.Permission.SEND_MESSAGE, ChatMember.Permission.DELETE_CHAT));
+        chatMemberRepository.save(m3);
+
+        user1.setContacts(Set.of(dialogue.getId(), chat.getId()));
 
         userRepository.save(user1);
     }
@@ -69,6 +76,7 @@ public class TestTest {
         user.setUsername(faker.name().name());
         user.setEmail(faker.internet().emailAddress());
         user.setPassword(faker.internet().password(5, 20));
+        user.setContacts(Set.of());
         user.setFolders(new HashMap<>(Map.of("all", new HashSet<>())));
         user = userRepository.save(user);
         return user;
