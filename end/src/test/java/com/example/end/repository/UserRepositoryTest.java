@@ -31,7 +31,7 @@ public class UserRepositoryTest {
     @Autowired
     private ChatMemberRepository chatMemberRepository;
     @Autowired
-    public ContactsSearchDao contactsSearchDao;
+    public ContactSearchDao contactSearchDao;
 
     @Autowired
     private UserViewMapper userViewMapper;
@@ -44,15 +44,6 @@ public class UserRepositoryTest {
         userRepository.deleteAll();
         chatRepository.deleteAll();
         chatMemberRepository.deleteAll();
-    }
-
-    @Test
-    public void contactExists() {
-        Chat chat = new Chat();
-        chat.setTitle(faker.name().title());
-        chat = chatRepository.save(chat);
-
-        assertThat(contactsSearchDao.contactExists(chat.getId())).isTrue();
     }
 
     @Test
@@ -71,7 +62,7 @@ public class UserRepositoryTest {
         m2.setId(new ChatMember.ChatMemberId(chat.getId(), user2.getId()));
         chatMemberRepository.save(m2);
 
-        List<Contact> contacts = contactsSearchDao.getChatMembers(chat.getId(), PageRequest.of(0, 2));
+        List<Contact> contacts = contactSearchDao.getChatMembers(chat.getId(), PageRequest.of(0, 2));
 
         assertThat(contacts).isEqualTo(List.of(
                 userViewMapper.toContact(user1),
@@ -103,7 +94,7 @@ public class UserRepositoryTest {
         user1.getFolders().put("all", Set.of(chat.getId(), dialogue.getId()));
         user1 = userRepository.save(user1);
 
-        List<PersonalContact> contacts = contactsSearchDao.getPersonalContacts(user1.getUsername());
+        List<PersonalContact> contacts = contactSearchDao.getPersonalContacts(user1.getUsername());
 
         PersonalContact dialogueContact = new PersonalContact(
                 dialogue.getId(),

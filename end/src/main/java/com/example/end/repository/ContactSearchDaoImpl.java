@@ -6,14 +6,11 @@ import com.example.end.domain.dto.Contact;
 import com.example.end.domain.dto.ContactQuery;
 import com.example.end.domain.dto.PersonalContact;
 import com.example.end.domain.model.Chat;
-import com.example.end.domain.model.User;
-import com.example.end.exception.ApiException;
 import com.mongodb.BasicDBObject;
 import com.mongodb.client.MongoDatabase;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collections;
@@ -22,12 +19,12 @@ import java.util.List;
 import java.util.Map;
 
 @Repository
-public class ContactsSearchDaoImpl implements ContactsSearchDao {
+public class ContactSearchDaoImpl implements ContactSearchDao {
 
     private final MongoDatabase db;
 
     @Autowired
-    public ContactsSearchDaoImpl(DbConfig config) {
+    public ContactSearchDaoImpl(DbConfig config) {
         var client = config.mongoClient();
         this.db = client.getDatabase("cool-chat");
     }
@@ -207,8 +204,8 @@ public class ContactsSearchDaoImpl implements ContactsSearchDao {
     }
 
     @Override
-    public List<Contact> searchChatMembers(ChatMembersQuery query, Pageable pageable) {
-        var matchChat = new BasicDBObject("$match", new BasicDBObject("_id.chatId", query.chatId()));
+    public List<Contact> searchChatMembers(ObjectId chatId, ChatMembersQuery query, Pageable pageable) {
+        var matchChat = new BasicDBObject("$match", new BasicDBObject("_id.chatId", chatId));
 
         var lookupUsers = new BasicDBObject("$lookup",
                 new BasicDBObject(Map.of(
@@ -232,13 +229,22 @@ public class ContactsSearchDaoImpl implements ContactsSearchDao {
 
         var limit = new BasicDBObject("$limit", pageable.getPageSize());
 
+        var projectContacts = new BasicDBObject("$project", Map.of(
+                "id", "$_id",
+                "displayName", 1,
+                "identifier", "$username",
+                "imageUrl", 1,
+                "info", 1
+        ));
+
         var stages = List.of(
                 matchChat,
                 lookupUsers,
                 replaceRoot,
                 matchField,
                 skip,
-                limit
+                limit,
+                projectContacts
         );
 
         var chatMembers = db.getCollection("chat-members");
@@ -275,17 +281,7 @@ public class ContactsSearchDaoImpl implements ContactsSearchDao {
                 project
         );
 
-        String collectionName;
-
-        if (query.source() == User.class) {
-            collectionName = "users";
-        } else if(query.source() == Chat.class) {
-            collectionName = "chats";
-        } else {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid request");
-        }
-
-        var contacts = db.getCollection(collectionName);
+        var contacts = db.getCollection(query.collectionName());
         List<Contact> result = new LinkedList<>();
         contacts.aggregate(stages, Contact.class).forEach(result::add);
         return result;

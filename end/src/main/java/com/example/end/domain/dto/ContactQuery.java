@@ -1,7 +1,7 @@
 package com.example.end.domain.dto;
 
-public record ContactQuery<E>(
-        Class<E> source,
+public record ContactQuery(
+        String collectionName,
         String field,
         String value
 ) {
