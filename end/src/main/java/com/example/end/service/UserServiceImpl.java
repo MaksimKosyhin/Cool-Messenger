@@ -1,5 +1,6 @@
 package com.example.end.service;
 
+import com.example.end.config.TokenResolver;
 import com.example.end.domain.dto.*;
 import com.example.end.domain.mapper.UserEditMapper;
 import com.example.end.domain.mapper.UserViewMapper;
@@ -14,14 +15,14 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jwt.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Instant;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 @Service
 @RequiredArgsConstructor
@@ -29,10 +30,9 @@ public class UserServiceImpl implements UserService{
     private final UserRepository userRepository;
     private final FileService fileService;
     private final JavaMailSender mailSender;
+    private final TokenResolver tokenResolver;
     private final AuthenticationManager authenticationManager;
     private final PasswordEncoder passwordEncoder;
-    private final JwtEncoder jwtEncoder;
-    private final JwtDecoder jwtDecoder;
     private final UserViewMapper userViewMapper;
     private final UserEditMapper userEditMapper;
 
@@ -151,7 +151,7 @@ public class UserServiceImpl implements UserService{
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user = userRepository.save(user);
 
-        var token = getConfirmationToken(user.getId().toString(), user.getEmail());
+        var token = tokenResolver.getToken(user.getId().toString(), Map.of("email", user.getEmail()));
         sendEmailConfirmation(user.getEmail(), token);
     }
 
@@ -171,45 +171,15 @@ public class UserServiceImpl implements UserService{
         var user = (User) authentication.getPrincipal();
 
         var loggedInUser = userViewMapper.toLoggedInUser(user);
-        var token = getAuthToken(user.getId());
+        var token = tokenResolver.getToken(user.getId().toHexString());
         return new AuthResponse(loggedInUser, token);
     }
 
-    private String getAuthToken(ObjectId userId) {
-        var now = Instant.now();
-        var expiry = 60 * 60 * 24 * 7;
-
-        var claims =
-                JwtClaimsSet.builder()
-                        .issuer("example.com")
-                        .issuedAt(now)
-                        .expiresAt(now.plusSeconds(expiry))
-                        .subject(userId.toHexString())
-                        .build();
-
-        return this.jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
-    }
 
     @Override
     public void changeEmail(String userId, String email) {
-        var token = getConfirmationToken(userId, email);
+        var token = tokenResolver.getToken(userId, Map.of("email", email));
         sendEmailConfirmation(email, token);
-    }
-
-    private String getConfirmationToken(String userId, String email) {
-        var now = Instant.now();
-        var expiry = 60 * 60 * 24;
-
-        var claims =
-                JwtClaimsSet.builder()
-                        .issuer("example.com")
-                        .issuedAt(now)
-                        .expiresAt(now.plusSeconds(expiry))
-                        .subject(userId)
-                        .claim("email", email)
-                        .build();
-
-        return this.jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
     }
 
     private void sendEmailConfirmation(String email, String token) {
@@ -227,7 +197,7 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public void confirmRegistration(String token) {
-        var jwt = decodeFromToken(token);
+        var jwt = tokenResolver.decodeFromToken(token);
         var user = userRepository.findById(new ObjectId(jwt.getSubject())).get();
         user.setEnabled(true);
         userRepository.save(user);
@@ -235,26 +205,9 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public void confirmEmailChange(String token) {
-        var jwt = decodeFromToken(token);
+        var jwt = tokenResolver.decodeFromToken(token);
         var user = userRepository.findById(new ObjectId(jwt.getSubject())).get();
         user.setEmail(jwt.getClaimAsString("email"));
         userRepository.save(user);
-    }
-
-    private Jwt decodeFromToken(String token) {
-        Jwt jwt;
-
-        try{
-            jwt = jwtDecoder.decode(token);
-        } catch (JwtException ex) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "invalid token");
-        }
-
-        if(jwt.getExpiresAt().isBefore(Instant.now())) {
-            var msg = "Confirmation token has expired. Try to send another confirmation";
-            throw new ApiException(HttpStatus.UNAUTHORIZED, msg);
-        }
-
-        return jwt;
     }
 }
