@@ -72,14 +72,15 @@ public class SecurityConfig {
   public UserDetailsService userDetailsService(UserRepository userRepository) {
     return identifier -> {
       User user;
-      if(userRepository.existsById(new ObjectId(identifier))) {
+
+      if(ObjectId.isValid(identifier) && userRepository.existsById(new ObjectId(identifier))) {
         user = userRepository.findById(new ObjectId(identifier)).get();
       } else if(userRepository.existsByUsername(identifier)) {
         user = userRepository.findByUsername(identifier).get();
       } else if(userRepository.existsByEmail(identifier)) {
         user = userRepository.findByEmail(identifier).get();
       } else {
-        throw new ApiException(HttpStatus.UNAUTHORIZED, "bad credentials");
+        throw new ApiException(HttpStatus.UNAUTHORIZED, "Bad credentials");
       }
 
       if(!user.isEnabled()) {

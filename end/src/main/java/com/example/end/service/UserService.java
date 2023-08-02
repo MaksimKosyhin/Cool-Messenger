@@ -14,7 +14,7 @@ public interface UserService {
     public Path updateProfileImage(String userId, MultipartFile file);
     public LoggedInUser updateUserInfo(String userId, UpdateUserRequest request);
     public LoggedInUser addContacts(String userId, Set<ObjectId> add);
-    public LoggedInUser removeContacts(String userId, Set<ObjectId> remove);
+    public LoggedInUser removeContacts(String userId, Set<ObjectId> toRemove);
     public boolean existsByUsername(String username);
     public void changePassword(String userId, UpdatePasswordRequest request);
     public void changeEmail(String userId, String email);

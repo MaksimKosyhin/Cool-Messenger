@@ -22,7 +22,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 
 @Service
 @RequiredArgsConstructor
@@ -88,7 +87,7 @@ public class UserServiceImpl implements UserService{
 
         var remaindersValid = request.remainders()
                 .stream()
-                .map(User.Remainder::getId)
+                .map(User.Remainder::id)
                 .allMatch(all::contains);
 
         return remaindersValid;
@@ -103,14 +102,17 @@ public class UserServiceImpl implements UserService{
     }
 
     @Override
-    public LoggedInUser removeContacts(String userId, Set<ObjectId> remove) {
+    public LoggedInUser removeContacts(String userId, Set<ObjectId> toRemove) {
         var user = getUserOrThrow(userId);
 
         var contacts = user.getContacts();
-        contacts.removeAll(remove);
+        contacts.removeAll(toRemove);
 
         var folders = user.getFolders();
         folders.values().forEach(folder -> folder.retainAll(contacts));
+
+        var remainders = user.getRemainders();
+        remainders.removeIf(remainder -> toRemove.contains(remainder.id()));
 
         user = userRepository.save(user);
         return userViewMapper.toLoggedInUser(user);
@@ -125,7 +127,7 @@ public class UserServiceImpl implements UserService{
         return userRepository.findById(new ObjectId(userId))
                 .orElseThrow(() -> new ApiException(
                         HttpStatus.NOT_FOUND,
-                        String.format("user with id: %s doesn't exist")));
+                        String.format("user with id: %s doesn't exist", userId)));
     }
 
     @Override
@@ -151,15 +153,8 @@ public class UserServiceImpl implements UserService{
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user = userRepository.save(user);
 
-        var token = tokenResolver.getToken(user.getId().toString(), Map.of("email", user.getEmail()));
+        var token = tokenResolver.generateToken(user.getId().toHexString(), Map.of("email", user.getEmail()));
         sendEmailConfirmation(user.getEmail(), token);
-    }
-
-    private User getUserByUsernameOrThrow(String username) {
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new ApiException(
-                        HttpStatus.NOT_FOUND,
-                        String.format("user with username: %s isn't found")));
     }
 
     @Override
@@ -171,14 +166,14 @@ public class UserServiceImpl implements UserService{
         var user = (User) authentication.getPrincipal();
 
         var loggedInUser = userViewMapper.toLoggedInUser(user);
-        var token = tokenResolver.getToken(user.getId().toHexString());
+        var token = tokenResolver.generateToken(user.getId().toHexString());
         return new AuthResponse(loggedInUser, token);
     }
 
 
     @Override
     public void changeEmail(String userId, String email) {
-        var token = tokenResolver.getToken(userId, Map.of("email", email));
+        var token = tokenResolver.generateToken(userId, Map.of("email", email));
         sendEmailConfirmation(email, token);
     }
 

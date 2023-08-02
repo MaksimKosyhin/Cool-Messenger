@@ -8,6 +8,9 @@ spring:
   servlet:
     multipart.max-file-size: 100MB
     max-request-size: 100MB
+  mongodb:
+    embedded:
+      version: 5.0.5
 springdoc:
   api-docs:
     enabled: true
@@ -38,8 +41,5 @@ spring:
   config:
     activate:
       on-profile: test
-  data:
-    mongodb:
-      uri: mongodb://localhost:27018/cool-chat
 cool-messenger:
   uploads-folder: uploads-test

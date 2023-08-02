@@ -75,10 +75,9 @@ public class User implements UserDetails {
         return enabled;
     }
 
-    @Data
-    public static class Remainder {
-        private ObjectId id;
-        private LocalDateTime notifyAt;
-        private String message;
+    public record Remainder(
+            ObjectId id,
+            LocalDateTime notifyAt,
+            String message) {
     }
 }

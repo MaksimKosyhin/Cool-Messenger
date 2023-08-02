@@ -1,32 +1,30 @@
 package com.example.end.controller;
 
+import com.example.end.config.TokenResolver;
 import com.example.end.domain.dto.*;
+import com.example.end.domain.mapper.UserEditMapper;
 import com.example.end.domain.mapper.UserViewMapper;
 import com.example.end.domain.model.User;
 import com.example.end.repository.UserRepository;
+import com.example.end.service.ChatService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.javafaker.Faker;
 import org.bson.types.ObjectId;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.security.oauth2.jwt.JwtClaimsSet;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -37,157 +35,83 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 public class UserControllerTest {
-    private static final String REGISTRATION_PATH = "/api/v1/users";
 
-    private final MockMvc mockMvc;
-
-    private final ObjectMapper objectMapper;
-
+    private static final String STARTING_PATH = "/api/v1/users";
     private final Faker faker = new Faker();
 
-    private final UserRepository userRepository;
+    @Autowired
+    private MockMvc mockMvc;
 
-    private final UserViewMapper userViewMapper;
+    @MockBean
+    private UserRepository userRepository;
 
-    private final JwtEncoder jwtEncoder;
+    @MockBean
+    private ChatService chatService;
 
+    @MockBean
+    private TokenResolver tokenResolver;
+
+    @MockBean
+    private JavaMailSender javaMailSender;
 
     @Autowired
-    public UserControllerTest(MockMvc mockMvc,
-                              ObjectMapper objectMapper,
-                              UserRepository userRepository,
-                              UserViewMapper userViewMapper,
-                              JwtEncoder jwtEncoder) {
-        this.mockMvc = mockMvc;
-        this.objectMapper = objectMapper;
-        this.userRepository = userRepository;
-        this.userViewMapper = userViewMapper;
-        this.jwtEncoder = jwtEncoder;
-    }
+    private ObjectMapper objectMapper;
 
-    @AfterEach
-    public void clearDb() {
-        userRepository.deleteAll();
-    }
+    @Autowired
+    private UserEditMapper userEditMapper;
+
+    @Autowired
+    private UserViewMapper userViewMapper;
+
+    @Autowired
+    private PasswordEncoder encoder;
 
     @Test
-    void login_withUsername_ok() throws Exception {
-        User user = getValidUser();
-        registerUser(user);
-
-        AuthRequest request = new AuthRequest(user.getUsername(), user.getPassword());
-
-        String response = mockMvc.perform(post(REGISTRATION_PATH + "/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        AuthResponse result = objectMapper.readValue(response, AuthResponse.class);
-        assertThat(result.token()).isNotEmpty();
-        assertThat(result.user()).isEqualTo(userViewMapper.toLoggedInUser(user));
-    }
-
-    @Test
-    void login_withEmail_ok() throws Exception {
-        User user = getValidUser();
-        registerUser(user);
-
-        AuthRequest request = new AuthRequest(user.getEmail(), user.getPassword());
-
-        String response = mockMvc.perform(post(REGISTRATION_PATH + "/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        AuthResponse result = objectMapper.readValue(response, AuthResponse.class);
-        assertThat(result.token()).isNotEmpty();
-        assertThat(result.user()).isEqualTo(userViewMapper.toLoggedInUser(user));
-    }
-
-    @Test
-    public void login_withIncorrectCredentials_unauthorized() throws Exception {
-        User user = getValidUser();
-        registerUser(user);
-
-        AuthRequest request = new AuthRequest(user.getUsername(), faker.internet().password());
-
-        String response = mockMvc.perform(post(REGISTRATION_PATH + "/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        assertThat(response).isEqualTo("Bad credentials");
-    }
-
-    @Test
-    public void login_whenUserNotExists_unauthorized() throws Exception {
-        AuthRequest authRequest = new AuthRequest(faker.name().username(), faker.internet().password());
-
-        String response = mockMvc.perform(post(REGISTRATION_PATH + "/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(authRequest)))
-                .andExpect(status().isUnauthorized())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        assertThat(response).isEqualTo("bad credentials");
-    }
-
-    @Test
-    public void login_withoutAccountEnabled_forbidden() throws Exception {
-        CreateUserRequest createUserRequest = new CreateUserRequest(
-                null,
+    public void register_validRequest_created() throws Exception {
+        CreateUserRequest request = new CreateUserRequest(
+                faker.name().fullName(),
                 faker.name().username(),
                 faker.internet().emailAddress(),
                 faker.internet().password(5, 255)
         );
 
-        mockMvc.perform(post(REGISTRATION_PATH)
+        ObjectId id = new ObjectId();
+
+        Mockito.when(chatService.existsByIdentifier(request.username())).thenReturn(false);
+        Mockito.when(userRepository.existsByEmail(request.email())).thenReturn(false);
+        Mockito.when(userRepository.save(ArgumentMatchers.any(User.class))).thenAnswer(i -> {
+            User saved = (User) i.getArguments()[0];
+            saved.setId(id);
+            return saved;
+        });
+
+        Mockito.when(tokenResolver.generateToken(id.toHexString(),
+                Map.of("email", request.email()))).thenReturn("token");
+
+        mockMvc.perform(post(STARTING_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createUserRequest)));
-
-        AuthRequest authRequest = new AuthRequest(
-                createUserRequest.username(),
-                createUserRequest.password());
-
-        String response = mockMvc.perform(post(REGISTRATION_PATH + "/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(authRequest)))
-                .andExpect(status().isForbidden())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        assertThat(response).isEqualTo("Confirm your account on email to get access to your profile");
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
     }
 
     @Test
-    public void register_withInvalidCredentials_badRequest() throws Exception {
+    public void register_invalidRequest_badRequest() throws Exception {
         CreateUserRequest request = new CreateUserRequest(
                 null,
                 faker.internet().emailAddress(),
                 "123",
                 "1234");
 
-        String response = mockMvc.perform(post(REGISTRATION_PATH)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+        String response = mockMvc.perform(post(STARTING_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
         Map<String, String> expected = Map.of(
+                "displayName", "display name must not be blank",
                 "email", "must be valid email",
                 "password", "must be at least 5 characters long",
                 "username", "username cannot be an email"
@@ -198,35 +122,17 @@ public class UserControllerTest {
     }
 
     @Test
-    public void register_withValidCredentials_created() throws Exception {
+    public void register_usernameOccupied_conflict() throws Exception {
         CreateUserRequest request = new CreateUserRequest(
-                null,
+                faker.name().fullName(),
                 faker.name().username(),
                 faker.internet().emailAddress(),
                 faker.internet().password(5, 255)
         );
 
-        mockMvc.perform(post(REGISTRATION_PATH)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
+        Mockito.when(chatService.existsByIdentifier(request.username())).thenReturn(true);
 
-        assertThat(userRepository.existsByUsername(request.username())).isTrue();
-    }
-
-    @Test
-    public void register_whenUsernameIsOccupied_conflict() throws Exception {
-        User user = getValidUser();
-        registerUser(user);
-
-        CreateUserRequest request = new CreateUserRequest(
-                null,
-                user.getUsername(),
-                faker.internet().emailAddress(),
-                faker.internet().password(5, 255)
-        );
-
-        String response = mockMvc.perform(post(REGISTRATION_PATH)
+        String response = mockMvc.perform(post(STARTING_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
@@ -234,22 +140,21 @@ public class UserControllerTest {
                 .getResponse()
                 .getContentAsString();
 
-        assertThat(response).isEqualTo("user with this username already exists");
+        assertThat(response).isEqualTo(String.format("username: %s is already occupied", request.username()));
     }
 
     @Test
-    public void register_whenEmailIsOccupied_conflict() throws Exception {
-        User user = getValidUser();
-        registerUser(user);
-
+    public void register_emailOccupied_conflict() throws Exception {
         CreateUserRequest request = new CreateUserRequest(
-                null,
+                faker.name().fullName(),
                 faker.name().username(),
-                user.getEmail(),
+                faker.internet().emailAddress(),
                 faker.internet().password(5, 255)
         );
 
-        String response = mockMvc.perform(post(REGISTRATION_PATH)
+        Mockito.when(userRepository.existsByEmail(request.email())).thenReturn(true);
+
+        String response = mockMvc.perform(post(STARTING_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
@@ -261,182 +166,10 @@ public class UserControllerTest {
     }
 
     @Test
-    public void confirmRegistration_withValidToken_noContent() throws Exception {
-        CreateUserRequest request = new CreateUserRequest(
-                null,
-                faker.name().username(),
-                faker.internet().emailAddress(),
-                faker.internet().password(5, 255)
-        );
+    public void login_userNotExists_unauthorized() throws Exception {
+        AuthRequest request = new AuthRequest(faker.name().username(), faker.internet().password(5, 10));
 
-        mockMvc.perform(post(REGISTRATION_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)));
-
-        User user = userRepository.findByUsername(request.username()).get();
-        String token = getValidConfirmationToken(user.getId().toString(), user.getEmail());
-
-        mockMvc.perform(put(REGISTRATION_PATH + "/confirm")
-                .param("token", token))
-                .andExpect(status().isNoContent());
-
-        user = userRepository.findByUsername(request.username()).get();
-        assertThat(user.isEnabled()).isTrue();
-    }
-
-    @Test
-    public void confirmRegistration_withExpiredToken_unauthorized() throws Exception {
-        CreateUserRequest request = new CreateUserRequest(
-                null,
-                faker.name().username(),
-                faker.internet().emailAddress(),
-                faker.internet().password(5, 255)
-        );
-
-        mockMvc.perform(post(REGISTRATION_PATH)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)));
-
-        User user = userRepository.findByUsername(request.username()).get();
-        String token = getExpiredConfirmationToken(user.getId().toString(), user.getEmail());
-
-        String response = mockMvc.perform(put(REGISTRATION_PATH + "/confirm")
-                        .param("token", token))
-                .andExpect(status().isUnauthorized())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        assertThat(response).isEqualTo("Confirmation token has expired. Try to send another confirmation");
-    }
-
-    @Test
-    public void confirmRegistration_withInvalidToken_unauthorized() throws Exception {
-        String token = "invalid token";
-
-        String response = mockMvc.perform(put(REGISTRATION_PATH + "/confirm")
-                        .param("token", token))
-                .andExpect(status().isUnauthorized())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        assertThat(response).isEqualTo("invalid token");
-    }
-
-    @Test
-    @WithMockUser(username = "test-user", password = "test-password")
-    public void updateUserInfo_withValidRequest_ok() throws Exception {
-        User user1 = getValidUser();
-        user1.setUsername("test-user");
-        user1.setPassword("test-password");
-
-        registerUser(user1);
-
-        User user2 = getValidUser();
-        registerUser(user2);
-        user2 = userRepository.findByUsername(user2.getUsername()).get();
-
-        User.Remainder remainder = new User.Remainder();
-        remainder.setId(user2.getId());
-        remainder.setMessage(faker.lorem().sentence());
-        remainder.setNotifyAt(LocalDateTime.now());
-
-        Set<ObjectId> folders = Set.of(user2.getId());
-
-        UpdateUserRequest request = new UpdateUserRequest(
-                faker.name().username(),
-                faker.name().name(),
-                faker.lorem().sentence(),
-                Map.of(),
-                Set.of()
-        );
-
-        String response = mockMvc.perform(put(REGISTRATION_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        LoggedInUser result = objectMapper.readValue(response, LoggedInUser.class);
-        assertThat(result.info()).isEqualTo(request.info());
-        assertThat(result.displayName()).isEqualTo(request.displayName());
-    }
-
-    @Test
-    @WithMockUser(username = "test-user", password = "test-password")
-    public void updateUserInfo_withInValidRequest_badRequest() throws Exception {
-        User user1 = getValidUser();
-        user1.setUsername("test-user");
-        user1.setPassword("test-password");
-
-        registerUser(user1);
-
-        User user2 = getValidUser();
-        registerUser(user2);
-        user2 = userRepository.findByUsername(user2.getUsername()).get();
-        userRepository.delete(user2);
-
-        User.Remainder remainder = new User.Remainder();
-        remainder.setId(user2.getId());
-        remainder.setMessage(faker.lorem().sentence());
-        remainder.setNotifyAt(LocalDateTime.now());
-
-        UpdateUserRequest request = new UpdateUserRequest(
-                faker.name().username(),
-                faker.name().name(),
-                faker.lorem().sentence(),
-                Map.of(),
-                Set.of()
-        );
-
-        String response = mockMvc.perform(put(REGISTRATION_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        assertThat(response).isEqualTo("Nonexistent entity references were provided");
-    }
-
-    @Test
-    @WithMockUser(username = "test-user", password = "test-password")
-    public void changePassword_withValidRequest_noContent() throws Exception {
-        User user = getValidUser();
-        user.setUsername("test-user");
-        user.setPassword("test-password");
-
-        registerUser(user);
-
-        UpdatePasswordRequest request =
-                new UpdatePasswordRequest(user.getPassword(), faker.internet().password());
-
-        mockMvc.perform(put(REGISTRATION_PATH + "/password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
-
-        user = userRepository.findByUsername(user.getUsername()).get();
-        assertThat(user.getPassword()).isNotEqualTo(request.oldPassword());
-    }
-
-    @Test
-    @WithMockUser(username = "test-user", password = "test-password")
-    public void changePassword_withWrongOldPassword_unauthorized() throws Exception {
-        User user = getValidUser();
-        user.setUsername("test-user");
-        user.setPassword("test-password");
-
-        registerUser(user);
-
-        UpdatePasswordRequest request =
-                new UpdatePasswordRequest(faker.internet().password(), faker.internet().password());
-
-        String response = mockMvc.perform(put(REGISTRATION_PATH + "/password")
+        String response = mockMvc.perform(post(STARTING_PATH + "/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
@@ -448,18 +181,169 @@ public class UserControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "test-user", password = "test-password")
-    public void changePassword_withInvalidNewPassword_badRequest() throws Exception {
-        User user = getValidUser();
-        user.setUsername("test-user");
-        user.setPassword("test-password");
+    public void login_wrongPassword_unauthorized() throws Exception {
+        String password = faker.internet().password(5, 10);
+        User user = getValidUser(password);
 
-        registerUser(user);
+        AuthRequest request = new AuthRequest(user.getUsername(), "");
 
-        UpdatePasswordRequest request =
-                new UpdatePasswordRequest(user.getPassword(), "");
+        Mockito.when(userRepository.existsByUsername(request.identifier())).thenReturn(true);
+        Mockito.when(userRepository.findByUsername(request.identifier())).thenReturn(Optional.of(user));
 
-        String response = mockMvc.perform(put(REGISTRATION_PATH + "/password")
+        String response = mockMvc.perform(post(STARTING_PATH + "/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(response).isEqualTo("Bad credentials");
+    }
+
+    @Test
+    public void login_withoutEnabledAccount_forbidden() throws Exception {
+        String password = faker.internet().password(5, 10);
+        User user = getValidUser(password);
+        user.setEnabled(false);
+
+        AuthRequest request = new AuthRequest(user.getUsername(), password);
+
+        Mockito.when(userRepository.existsByUsername(request.identifier())).thenReturn(true);
+        Mockito.when(userRepository.findByUsername(request.identifier())).thenReturn(Optional.of(user));
+
+        String response = mockMvc.perform(post(STARTING_PATH + "/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(response).isEqualTo("Confirm your account on email to get access to your profile");
+    }
+
+    @Test
+    public void login_withUsername_ok() throws Exception {
+        String password = faker.internet().password(5, 10);
+        User user = getValidUser(password);
+
+        AuthRequest request = new AuthRequest(user.getUsername(), password);
+        String token = "token";
+
+        Mockito.when(userRepository.existsByUsername(request.identifier())).thenReturn(true);
+        Mockito.when(userRepository.findByUsername(request.identifier())).thenReturn(Optional.of(user));
+        Mockito.when(tokenResolver.generateToken(user.getId().toHexString())).thenReturn(token);
+
+        String response = mockMvc.perform(post(STARTING_PATH + "/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        AuthResponse result = objectMapper.readValue(response, AuthResponse.class);
+        assertThat(result.token()).isEqualTo(token);
+        assertThat(result.user()).isEqualTo(userViewMapper.toLoggedInUser(user));
+    }
+
+    @Test
+    public void login_withEmail_ok() throws Exception {
+        String password = faker.internet().password(5, 10);
+        User user = getValidUser(password);
+
+        AuthRequest request = new AuthRequest(user.getEmail(), password);
+        String token = "token";
+
+        Mockito.when(userRepository.existsByEmail(request.identifier())).thenReturn(true);
+        Mockito.when(userRepository.findByEmail(request.identifier())).thenReturn(Optional.of(user));
+        Mockito.when(tokenResolver.generateToken(user.getId().toHexString())).thenReturn(token);
+
+        String response = mockMvc.perform(post(STARTING_PATH + "/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        AuthResponse result = objectMapper.readValue(response, AuthResponse.class);
+        assertThat(result.token()).isEqualTo(token);
+        assertThat(result.user()).isEqualTo(userViewMapper.toLoggedInUser(user));
+    }
+
+    @Test
+    public void login_withId_ok() throws Exception {
+        String password = faker.internet().password(5, 10);
+        User user = getValidUser(password);
+
+        AuthRequest request = new AuthRequest(user.getId().toHexString(), password);
+        String token = "token";
+
+        Mockito.when(userRepository.existsById(new ObjectId(request.identifier()))).thenReturn(true);
+        Mockito.when(userRepository.findById(new ObjectId(request.identifier()))).thenReturn(Optional.of(user));
+        Mockito.when(tokenResolver.generateToken(user.getId().toHexString())).thenReturn(token);
+
+        String response = mockMvc.perform(post(STARTING_PATH + "/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        AuthResponse result = objectMapper.readValue(response, AuthResponse.class);
+        assertThat(result.token()).isEqualTo(token);
+        assertThat(result.user()).isEqualTo(userViewMapper.toLoggedInUser(user));
+    }
+
+    @Test
+    @WithMockUser(username = "64c91dc80d07a36a9a384efc")
+    public void updateUserInfo_validRequest_ok() throws Exception {
+        User user = getValidUser(new ObjectId("64c91dc80d07a36a9a384efc"));
+
+        UpdateUserRequest request = new UpdateUserRequest(
+                faker.name().username(),
+                faker.name().fullName(),
+                faker.lorem().sentence(),
+                Collections.emptyMap(),
+                Collections.emptySet()
+        );
+
+        Mockito.when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        Mockito.when(userRepository.save(user)).thenAnswer(i -> i.getArguments()[0]);
+
+        String response = mockMvc.perform(put(STARTING_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        LoggedInUser result = objectMapper.readValue(response, LoggedInUser.class);
+
+        userEditMapper.update(request, user);
+        assertThat(result).isEqualTo(userViewMapper.toLoggedInUser(user));
+    }
+
+    @Test
+    @WithMockUser(username = "64c91dc80d07a36a9a384efc")
+    public void updateUserInfo_invalidRequest_badRequest() throws Exception {
+        User user = getValidUser(new ObjectId("64c91dc80d07a36a9a384efc"));
+
+        UpdateUserRequest request = new UpdateUserRequest(
+                faker.internet().emailAddress(),
+                null,
+                null,
+                null,
+                null
+        );
+
+        Mockito.when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        String response = mockMvc.perform(put(STARTING_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -467,67 +351,181 @@ public class UserControllerTest {
                 .getResponse()
                 .getContentAsString();
 
-        Map<String, String> msg = objectMapper.readValue(response, HashMap.class);
+        Map<String, String> expected = Map.of(
+                "displayName", "display name must not be blank",
+                "username", "username cannot be an email"
+        );
 
-        assertThat(msg).isEqualTo(Map.of("newPassword", "should be at least 5 characters long"));
+        Map<String, String> result = objectMapper.readValue(response, HashMap.class);
+        assertThat(result).isEqualTo(expected);
     }
 
-    private void registerUser(User user) throws Exception {
-        CreateUserRequest request = new CreateUserRequest(
-                null,
-                user.getUsername(),
-                user.getEmail(),
-                user.getPassword());
+    @Test
+    @WithMockUser(username = "64c91dc80d07a36a9a384efc")
+    public void updateUserInfo_invalidContactReferences_badRequest() throws Exception {
+        User user = getValidUser(new ObjectId("64c91dc80d07a36a9a384efc"));
 
-        mockMvc.perform(post(REGISTRATION_PATH)
+        UpdateUserRequest request = new UpdateUserRequest(
+                faker.name().username(),
+                faker.name().fullName(),
+                faker.lorem().sentence(),
+                Map.of("all", Set.of(new ObjectId())),
+                Collections.emptySet()
+        );
+
+        Mockito.when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        String response = mockMvc.perform(put(STARTING_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)));
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
-        user = userRepository.findByUsername(user.getUsername()).get();
-        String token = getValidConfirmationToken(user.getId().toString(), user.getEmail());
-
-        mockMvc.perform(put(REGISTRATION_PATH + "/confirm")
-                        .param("token", token));
+        assertThat(response).isEqualTo("invalid contact references");
     }
 
-    private User getValidUser() {
+    @Test
+    @WithMockUser(username = "64c91dc80d07a36a9a384efc")
+    public void removeContacts_validRequest_ok() throws Exception {
+        User user = getValidUser(new ObjectId("64c91dc80d07a36a9a384efc"));
+        ObjectId id1 = new ObjectId();
+        ObjectId id2 = new ObjectId();
+
+        user.getContacts().addAll(Set.of(id1, id2));
+        user.getFolders().putAll(Map.of("one", new HashSet<>(Set.of(id1, id2)),
+                                "two", new HashSet<>(Set.of(id2))));
+        user.getRemainders().addAll(Set.of(new User.Remainder(id2, null, null)));
+
+        Set<ObjectId> request = Set.of(id2);
+
+        Mockito.when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        Mockito.when(userRepository.save(user)).thenAnswer(i -> i.getArguments()[0]);
+
+        String response = mockMvc.perform(put(STARTING_PATH + "/contacts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        LoggedInUser result = objectMapper.readValue(response, LoggedInUser.class);
+
+        assertThat(result.contacts()).isEqualTo(Set.of(id1));
+        assertThat(result.folders()).isEqualTo(Map.of("one", Set.of(id1), "two", Set.of()));
+        assertThat(result.remainders()).isEqualTo(Set.of());
+    }
+
+    @Test
+    @WithMockUser(username = "64c91dc80d07a36a9a384efc", password = "password")
+    public void changePassword_validRequest_noContent() throws Exception {
+        String password = "password";
+        User user = getValidUser(new ObjectId("64c91dc80d07a36a9a384efc"), password);
+
+        Mockito.when(userRepository.existsById(user.getId())).thenReturn(true);
+        Mockito.when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        UpdatePasswordRequest request =
+                new UpdatePasswordRequest(password, faker.internet().password(5, 10));
+
+        mockMvc.perform(put(STARTING_PATH + "/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @WithMockUser(username = "64c91dc80d07a36a9a384efc", password = "password")
+    public void changePassword_incorrectOldPassword_unauthorized() throws Exception {
+        String password = "password";
+        User user = getValidUser(new ObjectId("64c91dc80d07a36a9a384efc"), password);
+
+        Mockito.when(userRepository.existsById(user.getId())).thenReturn(true);
+        Mockito.when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        UpdatePasswordRequest request =
+                new UpdatePasswordRequest("wrong-password", faker.internet().password(5, 10));
+
+        String response = mockMvc.perform(put(STARTING_PATH + "/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(response).isEqualTo("Bad credentials");
+    }
+
+    @Test
+    @WithMockUser(username = "64c91dc80d07a36a9a384efc", password = "password")
+    public void changePassword_invalidNewPassword_badRequest() throws Exception {
+        String password = "password";
+        User user = getValidUser(new ObjectId("64c91dc80d07a36a9a384efc"), password);
+
+        Mockito.when(userRepository.existsById(user.getId())).thenReturn(true);
+        Mockito.when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        UpdatePasswordRequest request =
+                new UpdatePasswordRequest(password, "");
+
+        String response = mockMvc.perform(put(STARTING_PATH + "/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Map<String, String> expected = Map.of(
+                "newPassword", "should be at least 5 characters long"
+        );
+
+        Map<String, String> result = objectMapper.readValue(response, HashMap.class);
+        assertThat(result).isEqualTo(expected);
+    }
+
+    private User getValidUser(ObjectId id, String password) {
         User user = new User();
-        user.setUsername(faker.name().name());
+        user.setId(id);
+        user.setDisplayName(faker.name().fullName());
+        user.setUsername(faker.name().username());
         user.setEmail(faker.internet().emailAddress());
-        user.setPassword(faker.internet().password(5, 20));
-        user.setFolders(Map.of("all", new HashSet<>()));
+        user.setPassword(encoder.encode(password));
+        user.setEnabled(true);
+        user.setContacts(new HashSet<>());
+        user.setFolders(new HashMap<>());
+        user.setRemainders(new HashSet<>());
         return user;
     }
 
-    private String getValidConfirmationToken(String userId, String email) {
-        var now = Instant.now();
-        var expiry = 60 * 60 * 24;
-
-        var claims =
-                JwtClaimsSet.builder()
-                        .issuer("example.com")
-                        .issuedAt(now)
-                        .expiresAt(now.plusSeconds(expiry))
-                        .subject(userId)
-                        .claim("email", email)
-                        .build();
-
-        return this.jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
+    private User getValidUser(ObjectId id) {
+        User user = new User();
+        user.setId(id);
+        user.setDisplayName(faker.name().fullName());
+        user.setUsername(faker.name().username());
+        user.setEmail(faker.internet().emailAddress());
+        user.setPassword(encoder.encode(faker.internet().password(5, 10)));
+        user.setEnabled(true);
+        user.setContacts(new HashSet<>());
+        user.setFolders(new HashMap<>());
+        user.setRemainders(new HashSet<>());
+        return user;
     }
 
-    private String getExpiredConfirmationToken(String userId, String email) {
-        var expiry = 60 * 60 * 24;
-        var now = Instant.now().minus(expiry, ChronoUnit.SECONDS);
-
-        var claims =
-                JwtClaimsSet.builder()
-                        .issuer("example.com")
-                        .issuedAt(now)
-                        .expiresAt(now.plusSeconds(expiry))
-                        .subject(userId)
-                        .claim("email", email)
-                        .build();
-
-        return this.jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
+    private User getValidUser(String password) {
+        User user = new User();
+        user.setId(new ObjectId());
+        user.setDisplayName(faker.name().fullName());
+        user.setUsername(faker.name().username());
+        user.setEmail(faker.internet().emailAddress());
+        user.setPassword(encoder.encode(password));
+        user.setEnabled(true);
+        user.setContacts(new HashSet<>());
+        user.setFolders(new HashMap<>());
+        user.setRemainders(new HashSet<>());
+        return user;
     }
 }

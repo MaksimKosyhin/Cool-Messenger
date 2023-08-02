@@ -36,7 +36,7 @@ public class UserController {
         if(userService.existsByUsername(request.username()) ||
             chatService.existsByIdentifier(request.username())) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(String.format("username: %s is occupied", request.username()));
+                    .body(String.format("username: %s is already occupied", request.username()));
         }
 
         userService.register(request);

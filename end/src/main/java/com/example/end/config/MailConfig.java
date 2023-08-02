@@ -14,8 +14,8 @@ import java.io.InputStream;
 
 @Configuration
 public class MailConfig {
+    //todo: refactor
     @Bean
-    @Profile({"dev", "prod"})
     public JavaMailSender javaMailSender() {
         var mailSender = new JavaMailSenderImpl();
         mailSender.setHost("smtp.gmail.com");
@@ -31,59 +31,5 @@ public class MailConfig {
         props.put("mail.debug", "true");
 
         return mailSender;
-    }
-
-    @Bean
-    @Profile("test")
-    public JavaMailSender MockMailSender() {
-        return new MockMailSender();
-    }
-
-    public static class MockMailSender implements JavaMailSender{
-        private String token;
-        @Override
-        public MimeMessage createMimeMessage() {
-            return null;
-        }
-
-        @Override
-        public MimeMessage createMimeMessage(InputStream contentStream) throws MailException {
-            return null;
-        }
-
-        @Override
-        public void send(MimeMessage mimeMessage) throws MailException {
-
-        }
-
-        @Override
-        public void send(MimeMessage... mimeMessages) throws MailException {
-
-        }
-
-        @Override
-        public void send(MimeMessagePreparator mimeMessagePreparator) throws MailException {
-
-        }
-
-        @Override
-        public void send(MimeMessagePreparator... mimeMessagePreparators) throws MailException {
-
-        }
-
-        @Override
-        public void send(SimpleMailMessage simpleMessage) throws MailException {
-            var text = simpleMessage.getText();
-            this.token = text.substring(text.indexOf("token=")).substring(6);
-        }
-
-        public String getToken() {
-            return this.token;
-        }
-
-        @Override
-        public void send(SimpleMailMessage... simpleMessages) throws MailException {
-
-        }
     }
 }

@@ -15,7 +15,7 @@ public class TokenResolver {
     private final JwtEncoder jwtEncoder;
     private final JwtDecoder jwtDecoder;
 
-    public String getToken(String subject) {
+    public String generateToken(String subject) {
         var now = Instant.now();
         var expiry = 60 * 60 * 24 * 7;
 
@@ -30,7 +30,7 @@ public class TokenResolver {
         return this.jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
     }
 
-    public String getToken(String subject, Map<String, Object> claims) {
+    public String generateToken(String subject, Map<String, Object> claims) {
         var now = Instant.now();
         var expiry = 60 * 60 * 24;
 
