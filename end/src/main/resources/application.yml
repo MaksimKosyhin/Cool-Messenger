@@ -4,13 +4,13 @@ spring:
       - dev
   data:
     mongodb:
-      uri: mongodb://localhost:27017/cool-chat
+      database: "cool-chat"
+      port: 27017
+      host: localhost
+      auto-index-creation: true
   servlet:
     multipart.max-file-size: 100MB
     max-request-size: 100MB
-  mongodb:
-    embedded:
-      version: 5.0.5
 springdoc:
   api-docs:
     enabled: true
@@ -41,5 +41,8 @@ spring:
   config:
     activate:
       on-profile: test
+  data:
+    mongodb:
+      port: ${mongodb.container.port}
 cool-messenger:
   uploads-folder: uploads-test

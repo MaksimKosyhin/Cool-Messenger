@@ -94,12 +94,12 @@ public class UserRepositoryTest {
         user1.getFolders().put("all", Set.of(chat.getId(), dialogue.getId()));
         user1 = userRepository.save(user1);
 
-        List<PersonalContact> contacts = contactSearchDao.getPersonalContacts(user1.getUsername());
+        List<PersonalContact> contacts = contactSearchDao.getPersonalContacts(user1.getIdentifier());
 
         PersonalContact dialogueContact = new PersonalContact(
                 dialogue.getId(),
                 user2.getDisplayName(),
-                user2.getUsername(),
+                user2.getIdentifier(),
                 user2.getImageUrl(),
                 user2.getInfo(),
                 m1.getPermissions()
@@ -113,7 +113,7 @@ public class UserRepositoryTest {
     public Chat getValidChat() {
         Chat chat = new Chat();
         chat.setType(Chat.ChatType.GROUP);
-        chat.setTitle(faker.company().name());
+        chat.setDisplayName(faker.company().name());
         chat.setInfo(faker.lorem().sentence());
         chat.setIdentifier(faker.name().username());
         chat.setType(Chat.ChatType.GROUP);
@@ -124,7 +124,7 @@ public class UserRepositoryTest {
     private User getValidUser() {
         User user = new User();
         user.setDisplayName(faker.name().fullName());
-        user.setUsername(faker.name().username());
+        user.setIdentifier(faker.name().username());
         user.setInfo(faker.lorem().sentence());
         user.setEmail(faker.internet().emailAddress());
         user.setImageUrl(faker.internet().url());

@@ -33,7 +33,7 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<?> register(@RequestBody @Valid CreateUserRequest request) {
-        if(userService.existsByUsername(request.username()) ||
+        if(userService.existsByIdentifier(request.username()) ||
             chatService.existsByIdentifier(request.username())) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(String.format("username: %s is already occupied", request.username()));
@@ -51,7 +51,7 @@ public class UserController {
 
     @PutMapping
     public ResponseEntity<?> updateUserInfo(@RequestBody @Valid UpdateUserRequest request) {
-        if(userService.existsByUsername(request.username()) ||
+        if(userService.existsByIdentifier(request.username()) ||
                 chatService.existsByIdentifier(request.username())) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(String.format("username: %s is occupied", request.username()));

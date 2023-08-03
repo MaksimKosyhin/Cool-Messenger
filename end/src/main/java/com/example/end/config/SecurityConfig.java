@@ -75,8 +75,8 @@ public class SecurityConfig {
 
       if(ObjectId.isValid(identifier) && userRepository.existsById(new ObjectId(identifier))) {
         user = userRepository.findById(new ObjectId(identifier)).get();
-      } else if(userRepository.existsByUsername(identifier)) {
-        user = userRepository.findByUsername(identifier).get();
+      } else if(userRepository.existsByIdentifier(identifier)) {
+        user = userRepository.findByIdentifier(identifier).get();
       } else if(userRepository.existsByEmail(identifier)) {
         user = userRepository.findByEmail(identifier).get();
       } else {

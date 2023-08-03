@@ -58,7 +58,7 @@ public class TestTest {
         chatMemberRepository.save(m2);
 
         Chat chat = new Chat();
-        chat.setTitle(faker.lorem().word());
+        chat.setDisplayName(faker.lorem().word());
         chat = chatRepository.save(chat);
 
         ChatMember m3 = new ChatMember();
@@ -73,7 +73,7 @@ public class TestTest {
 
     private User getValidUser() {
         User user = new User();
-        user.setUsername(faker.name().name());
+        user.setIdentifier(faker.name().name());
         user.setEmail(faker.internet().emailAddress());
         user.setPassword(faker.internet().password(5, 20));
         user.setContacts(Set.of());

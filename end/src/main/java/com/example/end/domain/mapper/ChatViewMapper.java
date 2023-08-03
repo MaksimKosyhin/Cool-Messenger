@@ -12,8 +12,6 @@ import java.util.Set;
 @Mapper(componentModel = "spring")
 public interface ChatViewMapper {
 
-    @Mapping(target = "displayName", source = "title")
     public Contact toContact(Chat chat);
-    @Mapping(target = "displayName", source = "chat.title")
     public PersonalContact toPersonalContact(Chat chat, Set<ChatMember.Permission> permissions);
 }

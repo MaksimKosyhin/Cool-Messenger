@@ -1,6 +1,5 @@
 package com.example.end.repository;
 
-import com.example.end.config.DbConfig;
 import com.example.end.domain.dto.ChatMembersQuery;
 import com.example.end.domain.dto.Contact;
 import com.example.end.domain.dto.ContactQuery;
@@ -11,6 +10,7 @@ import com.mongodb.client.MongoDatabase;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collections;
@@ -24,14 +24,13 @@ public class ContactSearchDaoImpl implements ContactSearchDao {
     private final MongoDatabase db;
 
     @Autowired
-    public ContactSearchDaoImpl(DbConfig config) {
-        var client = config.mongoClient();
-        this.db = client.getDatabase("cool-chat");
+    public ContactSearchDaoImpl(MongoTemplate mongoTemplate) {
+        this.db = mongoTemplate.getDb();
     }
 
     @Override
-    public List<PersonalContact> getPersonalContacts(String username) {
-        var matchUser = new BasicDBObject("$match", new BasicDBObject("username", username));
+    public List<PersonalContact> getPersonalContacts(String identifier) {
+        var matchUser = new BasicDBObject("$match", new BasicDBObject("identifier", identifier));
 
         var lookupChats = new BasicDBObject("$lookup",
                 new BasicDBObject(Map.of(
@@ -61,7 +60,7 @@ public class ContactSearchDaoImpl implements ContactSearchDao {
                         "preserveNullAndEmptyArrays", true
                 )));
 
-        var projectContacts = projectContacts();
+        var projectContacts = projectPersonalContacts();
 
 
         var stages = List.of(
@@ -127,13 +126,13 @@ public class ContactSearchDaoImpl implements ContactSearchDao {
         return lookup;
     }
 
-    private BasicDBObject projectContacts() {
+    private BasicDBObject projectPersonalContacts() {
         var displayName = new BasicDBObject("$ifNull", List.of(
                 "$user.displayName",
-                "$chat.title"));
+                "$chat.displayName"));
 
         var identifier = new BasicDBObject("$ifNull", List.of(
-                "$user.username",
+                "$user.identifier",
                 "$chat.identifier"));
 
         var imageUrl = new BasicDBObject("$ifNull", List.of(
@@ -183,7 +182,7 @@ public class ContactSearchDaoImpl implements ContactSearchDao {
         var projectContacts = new BasicDBObject("$project", Map.of(
                 "id", "$_id",
                 "displayName", 1,
-                "identifier", "$username",
+                "identifier", 1,
                 "imageUrl", 1,
                 "info", 1
         ));
@@ -215,11 +214,12 @@ public class ContactSearchDaoImpl implements ContactSearchDao {
                         "as", "member"
                 )));
 
-        var replaceRoot = new BasicDBObject("$replaceRoot",
-                new BasicDBObject("$arrayElemAt", List.of("$member", 0)));
+        var replaceRoot = new BasicDBObject("$replaceRoot", new BasicDBObject(
+                new BasicDBObject("newRoot", new BasicDBObject(
+                        "$arrayElemAt", List.of("$member", 0)))));
 
         var matchField = new BasicDBObject("$match",
-                new BasicDBObject(query.field(),
+                new BasicDBObject(query.field().fieldName,
                         new BasicDBObject(Map.of(
                                 "$regex", query.value(),
                                 "$options", "i"
@@ -232,7 +232,7 @@ public class ContactSearchDaoImpl implements ContactSearchDao {
         var projectContacts = new BasicDBObject("$project", Map.of(
                 "id", "$_id",
                 "displayName", 1,
-                "identifier", "$username",
+                "identifier", 1,
                 "imageUrl", 1,
                 "info", 1
         ));
@@ -256,7 +256,7 @@ public class ContactSearchDaoImpl implements ContactSearchDao {
     @Override
     public List<Contact> searchContacts(ContactQuery query, Pageable pageable) {
         var matchField = new BasicDBObject("$match",
-                new BasicDBObject(query.field(),
+                new BasicDBObject(query.field().fieldName,
                         new BasicDBObject(Map.of(
                                 "$regex", query.value(),
                                 "$options", "i"
@@ -267,8 +267,8 @@ public class ContactSearchDaoImpl implements ContactSearchDao {
         var limit = new BasicDBObject("$limit", pageable.getPageSize());
 
         var project = new BasicDBObject("$project", Map.of(
-                "id", 1,
-                "title", 1,
+                "id", "$_id",
+                "displayName", 1,
                 "identifier", 1,
                 "imageUrl", 1,
                 "info", 1
@@ -281,7 +281,7 @@ public class ContactSearchDaoImpl implements ContactSearchDao {
                 project
         );
 
-        var contacts = db.getCollection(query.collectionName());
+        var contacts = db.getCollection(query.collectionName().collectionName);
         List<Contact> result = new LinkedList<>();
         contacts.aggregate(stages, Contact.class).forEach(result::add);
         return result;

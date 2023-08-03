@@ -10,6 +10,5 @@ import org.mapstruct.Mapping;
 public abstract class UserViewMapper {
     public abstract LoggedInUser toLoggedInUser(User user);
 
-    @Mapping(target = "identifier", source = "username")
     public abstract Contact toContact(User user);
 }

@@ -21,7 +21,6 @@ import org.springframework.http.MediaType;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.*;
@@ -33,7 +32,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
 public class UserControllerTest {
 
     private static final String STARTING_PATH = "/api/v1/users";
@@ -122,7 +120,7 @@ public class UserControllerTest {
     }
 
     @Test
-    public void register_usernameOccupied_conflict() throws Exception {
+    public void register_identifierOccupied_conflict() throws Exception {
         CreateUserRequest request = new CreateUserRequest(
                 faker.name().fullName(),
                 faker.name().username(),
@@ -185,10 +183,10 @@ public class UserControllerTest {
         String password = faker.internet().password(5, 10);
         User user = getValidUser(password);
 
-        AuthRequest request = new AuthRequest(user.getUsername(), "");
+        AuthRequest request = new AuthRequest(user.getIdentifier(), "");
 
-        Mockito.when(userRepository.existsByUsername(request.identifier())).thenReturn(true);
-        Mockito.when(userRepository.findByUsername(request.identifier())).thenReturn(Optional.of(user));
+        Mockito.when(userRepository.existsByIdentifier(request.identifier())).thenReturn(true);
+        Mockito.when(userRepository.findByIdentifier(request.identifier())).thenReturn(Optional.of(user));
 
         String response = mockMvc.perform(post(STARTING_PATH + "/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -207,10 +205,10 @@ public class UserControllerTest {
         User user = getValidUser(password);
         user.setEnabled(false);
 
-        AuthRequest request = new AuthRequest(user.getUsername(), password);
+        AuthRequest request = new AuthRequest(user.getIdentifier(), password);
 
-        Mockito.when(userRepository.existsByUsername(request.identifier())).thenReturn(true);
-        Mockito.when(userRepository.findByUsername(request.identifier())).thenReturn(Optional.of(user));
+        Mockito.when(userRepository.existsByIdentifier(request.identifier())).thenReturn(true);
+        Mockito.when(userRepository.findByIdentifier(request.identifier())).thenReturn(Optional.of(user));
 
         String response = mockMvc.perform(post(STARTING_PATH + "/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -224,15 +222,15 @@ public class UserControllerTest {
     }
 
     @Test
-    public void login_withUsername_ok() throws Exception {
+    public void login_withIdentifier_ok() throws Exception {
         String password = faker.internet().password(5, 10);
         User user = getValidUser(password);
 
-        AuthRequest request = new AuthRequest(user.getUsername(), password);
+        AuthRequest request = new AuthRequest(user.getIdentifier(), password);
         String token = "token";
 
-        Mockito.when(userRepository.existsByUsername(request.identifier())).thenReturn(true);
-        Mockito.when(userRepository.findByUsername(request.identifier())).thenReturn(Optional.of(user));
+        Mockito.when(userRepository.existsByIdentifier(request.identifier())).thenReturn(true);
+        Mockito.when(userRepository.findByIdentifier(request.identifier())).thenReturn(Optional.of(user));
         Mockito.when(tokenResolver.generateToken(user.getId().toHexString())).thenReturn(token);
 
         String response = mockMvc.perform(post(STARTING_PATH + "/login")
@@ -491,7 +489,7 @@ public class UserControllerTest {
         User user = new User();
         user.setId(id);
         user.setDisplayName(faker.name().fullName());
-        user.setUsername(faker.name().username());
+        user.setIdentifier(faker.name().username());
         user.setEmail(faker.internet().emailAddress());
         user.setPassword(encoder.encode(password));
         user.setEnabled(true);
@@ -505,7 +503,7 @@ public class UserControllerTest {
         User user = new User();
         user.setId(id);
         user.setDisplayName(faker.name().fullName());
-        user.setUsername(faker.name().username());
+        user.setIdentifier(faker.name().username());
         user.setEmail(faker.internet().emailAddress());
         user.setPassword(encoder.encode(faker.internet().password(5, 10)));
         user.setEnabled(true);
@@ -519,7 +517,7 @@ public class UserControllerTest {
         User user = new User();
         user.setId(new ObjectId());
         user.setDisplayName(faker.name().fullName());
-        user.setUsername(faker.name().username());
+        user.setIdentifier(faker.name().username());
         user.setEmail(faker.internet().emailAddress());
         user.setPassword(encoder.encode(password));
         user.setEnabled(true);

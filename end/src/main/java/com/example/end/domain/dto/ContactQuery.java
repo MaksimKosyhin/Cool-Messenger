@@ -1,8 +1,9 @@
 package com.example.end.domain.dto;
 
 public record ContactQuery(
-        String collectionName,
-        String field,
+        ContactCollection collectionName,
+
+        AllowedField field,
         String value
 ) {
 }

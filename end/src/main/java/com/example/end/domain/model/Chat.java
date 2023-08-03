@@ -13,7 +13,7 @@ public class Chat {
     @Id
     private ObjectId id;
 
-    private String title;
+    private String displayName;
 
     private String identifier;
 

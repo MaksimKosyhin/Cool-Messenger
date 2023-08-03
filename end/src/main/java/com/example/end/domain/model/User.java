@@ -22,7 +22,7 @@ public class User implements UserDetails {
 
     private String displayName;
     @Indexed
-    private String username;
+    private String identifier;
 
     private String email;
 
@@ -41,6 +41,11 @@ public class User implements UserDetails {
     private Map<String, Set<ObjectId>> folders;
 
     @Override
+    public String getUsername() {
+        return identifier;
+    }
+
+    @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return null;
     }
@@ -50,9 +55,8 @@ public class User implements UserDetails {
         return password;
     }
 
-    @Override
-    public String getUsername() {
-        return username;
+    public String getIdentifier() {
+        return identifier;
     }
 
     @Override

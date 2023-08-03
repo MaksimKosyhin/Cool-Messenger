@@ -14,7 +14,6 @@ import java.io.InputStream;
 
 @Configuration
 public class MailConfig {
-    //todo: refactor
     @Bean
     public JavaMailSender javaMailSender() {
         var mailSender = new JavaMailSenderImpl();
