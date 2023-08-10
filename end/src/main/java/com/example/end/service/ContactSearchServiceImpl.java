@@ -40,12 +40,7 @@ public class ContactSearchServiceImpl implements ContactSearchService{
     @Override
     public List<Contact> searchContacts(ContactQuery query, Pageable pageable) {
         throwIfPageableInvalid(pageable);
-
-        if(query.collectionName().equals("users") || query.collectionName().equals("chats")) {
-            return contactSearchDao.searchContacts(query, pageable);
-        } else {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid request");
-        }
+        return contactSearchDao.searchContacts(query, pageable);
     }
 
     private void throwIfPageableInvalid(Pageable pageable) {

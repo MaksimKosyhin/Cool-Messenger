@@ -30,7 +30,7 @@ public class User implements UserDetails {
 
     private String password;
 
-    private String imageUrl;
+    private String imagePath;
 
     private String info;
 

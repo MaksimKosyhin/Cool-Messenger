@@ -1,144 +1,108 @@
 package com.example.end.service;
 
-import com.example.end.exception.ApiException;
-import org.apache.commons.io.FileUtils;
-import org.junit.jupiter.api.AfterEach;
+import com.example.end.config.MinioProperties;
+import io.minio.MinioClient;
+import io.minio.StatObjectArgs;
+import io.minio.errors.ErrorResponseException;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@Testcontainers
+@ActiveProfiles("test-minio")
 public class FileServiceImplTest {
 
-    private final FileServiceImpl fileService;
-    private final String uploadsFolder;
+    @Autowired
+    private MinioClient minioClient;
+    @Autowired
+    private FileServiceImpl fileService;
 
     @Autowired
-    public FileServiceImplTest(FileServiceImpl fileService,
-                               @Value("cool-messenger.uploads-folder") String uploadsFolder) {
-        this.fileService = fileService;
-        this.uploadsFolder = uploadsFolder;
-    }
+    private MinioProperties minioProperties;
 
-    @AfterEach
-    public void clean() throws IOException {
-        FileUtils.cleanDirectory(new File(uploadsFolder));
-    }
+    @Container
+    public static GenericContainer<?> container =
+            new GenericContainer<>(DockerImageName.parse("quay.io/minio/minio"))
+                    .withExposedPorts(9000)
+                    .withEnv("MINIO_ACCESS_KEY", "minioadmin")
+                    .withEnv("MINIO_SECRET_KEY", "minioadmin")
+                    .withCommand("server /data");
 
-    @Test
-    public void testValidFileIsUploaded() throws Exception {
-        Path path = Paths.get("test");
-        MockMultipartFile file = new MockMultipartFile("file", "test.txt",
-                "text/plain", "Test file content".getBytes());
-
-        Path savedPath = fileService.save(file, path);
-
-        assertThat(Files.exists(savedPath)).isTrue();
+    @BeforeAll
+    public static void open() {
+        container.start();
+        var mappedPort = container.getMappedPort(9000);
+        System.setProperty("minio.container.port", String.valueOf(mappedPort));
     }
 
     @Test
-    public void testValidFileIsUploadedWithExistingFile() throws Exception {
-        Path path = Paths.get(uploadsFolder, "test", "test.txt");
-        Files.createDirectories(path.getParent());
-        Files.createFile(path);
+    public void uploadFile() throws Exception {
+        File file = new ClassPathResource("profile.jpg").getFile();
 
-        MockMultipartFile file = new MockMultipartFile("file", "test.txt",
-                "text/plain", "Test file content".getBytes());
+        fileService.uploadFile(
+                minioProperties.getBuckets().getApp(),
+                file.getName(),
+                new MockMultipartFile(file.getName(), Files.readAllBytes(file.toPath())));
 
-        Path savedPath = fileService.save(file, path.getParent());
-
-        assertThat(Files.exists(savedPath)).isTrue();
+        assertDoesNotThrow(() -> {
+            minioClient.statObject(StatObjectArgs.builder()
+                    .bucket(minioProperties.getBuckets().getApp())
+                    .object(file.getName()).build());
+        });
     }
 
     @Test
-    public void testEmptyFileThrowsException() {
-        Path path = Paths.get("test");
-        String fileName = "text.txt";
-        MockMultipartFile file = new MockMultipartFile("file", fileName,
-                "text/plain", new byte[0]);
+    public void getFile() throws Exception {
+        File file = new ClassPathResource("profile.jpg").getFile();
+        byte[] fileContent = Files.readAllBytes(file.toPath());
 
-        ApiException expected = new ApiException(
-                HttpStatus.BAD_REQUEST,
-                String.format("file %s is empty", fileName));
+        fileService.uploadFile(
+                minioProperties.getBuckets().getApp(),
+                file.getName(),
+                new MockMultipartFile(file.getName(), fileContent));
 
-        assertThatExceptionOfType(ApiException.class)
-                .isThrownBy(() -> fileService.save(file, path))
-                .satisfies(ex -> ex.equals(expected));
+        byte[] result = fileService.getFile(minioProperties.getBuckets().getApp(), file.getName());
+        assertThat(result).isEqualTo(fileContent);
     }
 
     @Test
-    public void testValidImageFileIsUploaded() throws Exception {
-        Path path = Paths.get("test");
-        File source = new ClassPathResource("profile.png").getFile();
-        MockMultipartFile file = new MockMultipartFile("file", "image.png",
-                "image/png", Files.readAllBytes(source.toPath()));
+    public void deleteFile() throws Exception {
+        File file = new ClassPathResource("profile.jpg").getFile();
+        byte[] fileContent = Files.readAllBytes(file.toPath());
 
-        Path savedPath = fileService.saveProfileImage(file, path);
+        fileService.uploadFile(
+                minioProperties.getBuckets().getApp(),
+                file.getName(),
+                new MockMultipartFile(file.getName(), fileContent));
 
-        assertThat(Files.exists(savedPath)).isTrue();
-    }
+        assertDoesNotThrow(() -> {
+            minioClient.statObject(StatObjectArgs.builder()
+                    .bucket(minioProperties.getBuckets().getApp())
+                    .object(file.getName()).build());
+        });
 
-    @Test
-    public void testInvalidImageFileThrowsException() {
-        Path path = Paths.get("test");
-        MockMultipartFile file = new MockMultipartFile("file", "image.txt",
-                "text/plain", new byte[0]);
+        fileService.deleteFile(minioProperties.getBuckets().getApp(), file.getName());
 
-        ApiException expected = new ApiException(
-                HttpStatus.BAD_REQUEST,
-                "image files must have png or jpeg extension");
-
-        assertThatExceptionOfType(ApiException.class)
-                .isThrownBy(() -> fileService.saveProfileImage(file, path))
-                .satisfies(ex -> ex.equals(expected));
-    }
-
-    @Test
-    public void testValidFileIsDeleted() throws Exception {
-        Path path = Paths.get(uploadsFolder, "test.txt");
-        Files.createFile(path);
-
-        fileService.delete(path);
-
-        assertThat(Files.exists(path)).isFalse();
-    }
-
-    @Test
-    public void testValidDirectoryIsDeleted() throws Exception {
-        Path directoryPath = Paths.get(uploadsFolder, "directory");
-        Files.createDirectory(directoryPath);
-
-        fileService.delete(directoryPath);
-
-        assertThat(Files.exists(directoryPath)).isFalse();
-    }
-
-    @Test
-    public void testDeletingNonExistingFileThrowsException() {
-        Path path = Paths.get(uploadsFolder, "non_existing_file.txt");
-
-        ApiException expected = new ApiException(
-                HttpStatus.BAD_REQUEST,
-                String.format("resourse: %s doesn't exist", path));
-
-        assertThatExceptionOfType(ApiException.class)
-                .isThrownBy(() -> fileService.delete(path))
-                .satisfies(ex -> ex.equals(expected));
+        Assertions.assertThrows(ErrorResponseException.class, () -> {
+            minioClient.statObject(StatObjectArgs.builder()
+                    .bucket(minioProperties.getBuckets().getApp())
+                    .object(file.getName()).build());
+        });
     }
 }
-

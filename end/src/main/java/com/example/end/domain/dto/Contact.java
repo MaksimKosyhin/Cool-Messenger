@@ -6,7 +6,7 @@ public record Contact(
         ObjectId id,
         String displayName,
         String identifier,
-        String imageUrl,
+        String imagePath,
         String info
 ) {
 }

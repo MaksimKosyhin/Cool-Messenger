@@ -9,7 +9,7 @@ public record PersonalContact(
         ObjectId id,
         String displayName,
         String identifier,
-        String imageUrl,
+        String imagePath,
         String info,
         Set<ChatMember.Permission> permissions
 ) {

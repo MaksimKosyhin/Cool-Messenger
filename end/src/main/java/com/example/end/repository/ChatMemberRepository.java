@@ -2,7 +2,6 @@ package com.example.end.repository;
 
 import com.example.end.domain.model.ChatMember;
 import com.mongodb.BasicDBObject;
-import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import org.bson.Document;
 import org.bson.types.ObjectId;

@@ -1,99 +1,84 @@
 package com.example.end.service;
 
-import com.example.end.exception.ApiException;
-import org.apache.tomcat.util.http.fileupload.FileUtils;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
+import io.minio.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Set;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class FileServiceImpl implements FileService{
-    private static final Set<String> IMAGE_EXTENSIONS = Set.of("image/png", "image/jpeg");
-
-    @Value("${cool-messenger.uploads-folder}")
-    private String uploadsFolder;
+    private final MinioClient minioClient;
 
     @Override
-    public Path replaceProfileImage(MultipartFile file, Path path) {
-        delete(path);
-        return saveProfileImage(file, path.getParent());
-    }
+    public void uploadFile(String bucketName, String key, MultipartFile file) {
+        InputStream input;
 
-    @Override
-    public Path saveProfileImage(MultipartFile file, Path path) {
-        if(!IMAGE_EXTENSIONS.contains(file.getContentType())) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "image files must have png or jpeg extension");
-        }
-
-        return save(file, path);
-    }
-
-    @Override
-    public Path replace(MultipartFile file, Path path) {
-        delete(path);
-        return save(file, path.getParent());
-    }
-
-    @Override
-    public Path save(MultipartFile file, Path path) {
-        if (file.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    String.format("file: \"%s\" is empty", file.getOriginalFilename()));
-        }
-
-        var destinationFile = generatePath(Paths.get(uploadsFolder).resolve(path), file.getOriginalFilename());
-
-        try (InputStream inputStream = file.getInputStream()) {
-            Files.createDirectories(destinationFile.getParent());
-            Files.copy(inputStream, destinationFile);
+        try {
+            input = file.getInputStream();
         } catch (IOException e) {
-            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+            log.error("exception getting input stream from file to be uploaded", e);
+            throw new RuntimeException(e);
         }
 
-        return destinationFile;
-    }
+        var putObjectArgs = PutObjectArgs
+                .builder()
+                .bucket(bucketName)
+                .object(key)
+                .stream(input, file.getSize(), -1)
+                .build();
 
-    private Path generatePath(Path path, String fileName) {
-        var newFile = path.resolve(fileName);
-
-        var extensionPosition = fileName.indexOf('.');
-        var withoutExtension = extensionPosition == -1 ? fileName : fileName.substring(0, extensionPosition);
-        var extension = extensionPosition == -1 ? "" : fileName.substring(extensionPosition);
-
-        for(int i = 0; newFile.toFile().exists(); i++) {
-            var newName = withoutExtension + String.format(" (%d)", i) + extension;
-            newFile = newFile.getParent().resolve(newName);
+        try {
+            minioClient.putObject(putObjectArgs);
+        } catch (Exception e) {
+            log.error("exception trying to upload file", e);
+            throw new RuntimeException(e);
         }
-
-        return newFile;
     }
 
     @Override
-    public void delete(Path path) {
-        var file = path.toFile();
+    public byte[] getFile(String bucketName, String key) {
+        var getObjectArgs = GetObjectArgs
+                .builder()
+                .bucket(bucketName)
+                .object(key)
+                .build();
 
-        if (!file.exists()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    String.format("resourse: %s doesn't exist", path));
+        GetObjectResponse response;
+
+        try {
+            response = minioClient.getObject(getObjectArgs);
+        } catch (Exception e) {
+            log.error(String.format("exception trying to retrieve file: %s from bucket: %s", key, bucketName), e);
+            throw new RuntimeException(e);
         }
 
-        if(file.isDirectory()) {
-            try {
-                FileUtils.cleanDirectory(file);
-            } catch (IOException e) {
-                throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
-            }
+        try {
+            return response.readAllBytes();
+        } catch (IOException e) {
+            log.error(String.format("exception trying to read bytes of file: %s from bucket: %s", key, bucketName), e);
+            throw new RuntimeException(e);
         }
+    }
 
-        file.delete();
+    @Override
+    public void deleteFile(String bucketName, String key) {
+        var removeObjectArgs = RemoveObjectArgs
+                .builder()
+                .bucket(bucketName)
+                .object(key)
+                .build();
+
+        try {
+            minioClient.removeObject(removeObjectArgs);
+        } catch (Exception e) {
+            log.info(String.format("exception while removing file: %s from bucket: %s", key, bucketName));
+            throw new RuntimeException(e);
+        }
     }
 }

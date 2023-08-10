@@ -135,9 +135,9 @@ public class ContactSearchDaoImpl implements ContactSearchDao {
                 "$user.identifier",
                 "$chat.identifier"));
 
-        var imageUrl = new BasicDBObject("$ifNull", List.of(
-                "$user.imageUrl",
-                "$chat.imageUrl"));
+        var imagePath = new BasicDBObject("$ifNull", List.of(
+                "$user.imagePath",
+                "$chat.imagePath"));
 
         var info = new BasicDBObject("$ifNull", List.of(
                 "$user.info",
@@ -152,7 +152,7 @@ public class ContactSearchDaoImpl implements ContactSearchDao {
                 "id", "$chat._id",
                 "displayName", displayName,
                 "identifier", identifier,
-                "imageUrl", imageUrl,
+                "imagePath", imagePath,
                 "info", info,
                 "permissions", permissions
         ));
@@ -183,7 +183,7 @@ public class ContactSearchDaoImpl implements ContactSearchDao {
                 "id", "$_id",
                 "displayName", 1,
                 "identifier", 1,
-                "imageUrl", 1,
+                "imagePath", 1,
                 "info", 1
         ));
 
@@ -233,7 +233,7 @@ public class ContactSearchDaoImpl implements ContactSearchDao {
                 "id", "$_id",
                 "displayName", 1,
                 "identifier", 1,
-                "imageUrl", 1,
+                "imagePath", 1,
                 "info", 1
         ));
 
@@ -270,7 +270,7 @@ public class ContactSearchDaoImpl implements ContactSearchDao {
                 "id", "$_id",
                 "displayName", 1,
                 "identifier", 1,
-                "imageUrl", 1,
+                "imagePath", 1,
                 "info", 1
         ));
 

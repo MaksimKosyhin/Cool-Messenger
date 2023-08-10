@@ -10,7 +10,7 @@ public record LoggedInUser(
         String displayName,
         String username,
         String info,
-        String imageUrl,
+        String imagePath,
         Set<User.Remainder> remainders,
         Set<ObjectId> contacts,
         Map<String, Set<ObjectId>> folders

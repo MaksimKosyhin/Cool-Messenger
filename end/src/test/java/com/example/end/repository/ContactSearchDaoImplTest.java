@@ -16,7 +16,6 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -31,12 +30,11 @@ import static org.assertj.core.api.Assertions.assertThat;
         basePackages = "com.example.end.domain.mapper",
         basePackageClasses = {ContactSearchDao.class, ContactSearchDaoImpl.class})
 @Testcontainers
-@ActiveProfiles("test")
+@ActiveProfiles("test-db")
 public class ContactSearchDaoImplTest {
     @Container
     public static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:latest")
-            .withExposedPorts(27017)
-            .waitingFor(new LogMessageWaitStrategy());
+            .withExposedPorts(27017);
 
     private final Faker faker = new Faker();
     @Autowired
@@ -108,7 +106,7 @@ public class ContactSearchDaoImplTest {
                         dialogue.getId(),
                         user2.getDisplayName(),
                         user2.getIdentifier(),
-                        user2.getImageUrl(),
+                        user2.getImagePath(),
                         user2.getInfo(),
                         m1.getPermissions()
                 ),
@@ -116,7 +114,7 @@ public class ContactSearchDaoImplTest {
                         chat.getId(),
                         chat.getDisplayName(),
                         chat.getIdentifier(),
-                        chat.getImageUrl(),
+                        chat.getImagePath(),
                         chat.getInfo(),
                         m3.getPermissions()
                 )
@@ -216,9 +214,10 @@ public class ContactSearchDaoImplTest {
         user3 = userRepository.save(user3);
 
         List<Contact> result = contactSearchDao.searchContacts(
-                new ContactQuery(ContactCollection.USERS, AllowedField.IDENTIFIER, prefix), PageRequest.of(1, 1));
+                new ContactQuery(ContactCollection.USERS, AllowedField.IDENTIFIER, prefix), PageRequest.of(0, 3));
 
         List<Contact> expected = List.of(
+                userViewMapper.toContact(user1),
                 userViewMapper.toContact(user2)
         );
 
@@ -231,6 +230,8 @@ public class ContactSearchDaoImplTest {
         user.setIdentifier(faker.name().username());
         user.setEmail(faker.internet().emailAddress());
         user.setPassword(faker.internet().password(5, 10));
+        user.setInfo(faker.lorem().sentence(7));
+        user.setImagePath(faker.internet().url());
         user.setEnabled(true);
         user.setContacts(new HashSet<>());
         user.setFolders(new HashMap<>());
@@ -245,7 +246,7 @@ public class ContactSearchDaoImplTest {
         chat.setInfo(faker.lorem().sentence());
         chat.setIdentifier(faker.name().username());
         chat.setType(Chat.ChatType.GROUP);
-        chat.setImageUrl(faker.internet().url());
+        chat.setImagePath(faker.internet().url());
         return chat;
     }
 }

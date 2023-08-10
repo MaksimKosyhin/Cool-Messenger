@@ -9,6 +9,7 @@ import com.example.end.exception.ApiException;
 import com.example.end.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -19,9 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -35,28 +36,33 @@ public class UserServiceImpl implements UserService{
     private final UserViewMapper userViewMapper;
     private final UserEditMapper userEditMapper;
 
+    @Value("spring.minio.buckets.app")
+    private String appBucket;
+
     @Override
-    public Path updateProfileImage(String userId, MultipartFile file) {
+    public String updateProfileImage(String userId, MultipartFile file) {
+        if(!file.getContentType().equals("image/png") && !file.getContentType().equals("image/jpeg")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    String.format("not supported image extension: s%", file.getContentType()));
+        }
+
         var user = getUserOrThrow(userId);
 
-        if(file.isEmpty() && user.getImageUrl() != null) {
-            fileService.delete(Paths.get(user.getImageUrl()));
-            return null;
+        if(user.getImagePath() != null) {
+            fileService.deleteFile(appBucket, user.getImagePath());
+            if (file.isEmpty()) {
+                return null;
+            }
         }
 
-        var imagePath = Path.of(user.getId().toString());
+        var imageId = UUID.randomUUID().toString();
+        var imagePath = Path.of("contact-images", user.getId().toHexString(), imageId).toString();
 
-        Path fullPath;
-        if(user.getImageUrl() == null) {
-            fullPath = fileService.saveProfileImage(file, imagePath);
-        } else {
-            fullPath = fileService.replaceProfileImage(file, imagePath);
-        }
-
-        user.setImageUrl(fullPath.toString());
+        fileService.uploadFile(appBucket, imagePath, file);
+        user.setImagePath(imagePath);
         userRepository.save(user);
 
-        return fullPath;
+        return imagePath;
     }
 
     @Override

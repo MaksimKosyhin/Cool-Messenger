@@ -12,14 +12,15 @@ import com.example.end.exception.ApiException;
 import com.example.end.repository.ChatRepository;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +29,8 @@ public class ChatServiceImpl implements ChatService{
     private final FileService fileService;
     private final ChatViewMapper chatViewMapper;
     private final ChatEditMapper chatEditMapper;
+    @Value("spring.minio.buckets.app")
+    private String appBucket;
 
     @Override
     public PersonalContact createChat(CreateChatRequest request) {
@@ -52,27 +55,29 @@ public class ChatServiceImpl implements ChatService{
     }
 
     @Override
-    public Path updateChatImage(ObjectId chatId, MultipartFile file) {
+    public String updateChatImage(ObjectId chatId, MultipartFile file) {
+        if(!file.getContentType().equals("image/png") && !file.getContentType().equals("image/jpeg")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    String.format("not supported image extension: s%", file.getContentType()));
+        }
+
         var chat = getChatOrThrow(chatId);
 
-        if(file.isEmpty() && chat.getImageUrl() != null) {
-            fileService.delete(Paths.get(chat.getImageUrl()));
-            return null;
+        if(chat.getImagePath() != null) {
+            fileService.deleteFile(appBucket, chat.getImagePath());
+            if (file.isEmpty()) {
+                return null;
+            }
         }
 
-        var imagePath = Path.of(chat.getId().toString());
+        var imageId = UUID.randomUUID().toString();
+        var imagePath = Path.of("contact-images", chat.getId().toHexString(), imageId).toString();
 
-        Path fullPath;
-        if(chat.getImageUrl() == null) {
-            fullPath = fileService.saveProfileImage(file, imagePath);
-        } else {
-            fullPath = fileService.replaceProfileImage(file, imagePath);
-        }
-
-        chat.setImageUrl(fullPath.toString());
+        fileService.uploadFile(appBucket, imagePath, file);
+        chat.setImagePath(imagePath);
         chatRepository.save(chat);
 
-        return fullPath;
+        return imagePath;
     }
 
     @Override

@@ -4,14 +4,13 @@ import com.example.end.domain.dto.*;
 import org.bson.types.ObjectId;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.file.Path;
 import java.util.Set;
 
 public interface UserService {
     public AuthResponse login(AuthRequest request);
     public void register(CreateUserRequest request);
     public void confirmRegistration(String token);
-    public Path updateProfileImage(String userId, MultipartFile file);
+    public String updateProfileImage(String userId, MultipartFile file);
     public LoggedInUser updateUserInfo(String userId, UpdateUserRequest request);
     public LoggedInUser addContacts(String userId, Set<ObjectId> add);
     public LoggedInUser removeContacts(String userId, Set<ObjectId> toRemove);

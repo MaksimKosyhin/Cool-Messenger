@@ -19,7 +19,7 @@ public class Chat {
 
     private String info;
 
-    private String imageUrl;
+    private String imagePath;
 
     private ChatType type;
 

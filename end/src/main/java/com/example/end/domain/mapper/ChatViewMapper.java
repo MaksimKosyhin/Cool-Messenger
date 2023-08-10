@@ -5,7 +5,6 @@ import com.example.end.domain.dto.PersonalContact;
 import com.example.end.domain.model.Chat;
 import com.example.end.domain.model.ChatMember;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 
 import java.util.Set;
 

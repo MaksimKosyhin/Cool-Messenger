@@ -2,12 +2,6 @@ spring:
   profiles:
     active:
       - dev
-  data:
-    mongodb:
-      database: "cool-chat"
-      port: 27017
-      host: localhost
-      auto-index-creation: true
   servlet:
     multipart.max-file-size: 100MB
     max-request-size: 100MB
@@ -27,22 +21,48 @@ spring:
   config:
     activate:
       on-profile: prod
-cool-messenger:
-  uploads-folder: uploads
+  data:
+    mongodb:
+      database: "cool-chat"
+      port: 27017
+      host: localhost
+      auto-index-creation: true
+  minio:
+    container:
+      port: "9000"
+    buckets:
+      app: app
 ---
 spring:
   config:
     activate:
       on-profile: dev
-cool-messenger:
-  uploads-folder: uploads-test
+  data:
+    mongodb:
+      database: "cool-chat"
+      port: 27017
+      host: localhost
+      auto-index-creation: true
+  minio:
+    container:
+      port: "9000"
+    buckets:
+      app: app
 ---
 spring:
   config:
     activate:
-      on-profile: test
+      on-profile: test-db
   data:
     mongodb:
       port: ${mongodb.container.port}
-cool-messenger:
-  uploads-folder: uploads-test
+---
+spring:
+  config:
+    activate:
+      on-profile: test-minio
+  minio:
+    container:
+      port: ${minio.container.port}
+    buckets:
+      app: app
