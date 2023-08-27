@@ -10,6 +10,10 @@
   <version>1.0-SNAPSHOT</version>
   <modules>
     <module>chat</module>
+    <module>auth-email</module>
+    <module>eureka-server</module>
+    <module>messaging</module>
+      <module>auth</module>
   </modules>
 
   <name>end</name>
@@ -60,6 +64,11 @@
       <groupId>com.github.javafaker</groupId>
       <artifactId>javafaker</artifactId>
       <version>1.0.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-starter-feign</artifactId>
+      <version>1.4.7.RELEASE</version>
     </dependency>
   </dependencies>
 
